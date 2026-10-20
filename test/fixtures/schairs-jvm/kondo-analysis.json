@@ -1,0 +1,32 @@
+{"analysis":
+ {"var-definitions":
+  [{"end-row": 3, "name-end-col": 18, "name-end-row": 3, "name-row": 3,
+    "ns": "schairs-user-service.users", "name": "default-role",
+    "defined-by": "clojure.core/def",
+    "filename": "src/main/schairs_user_service/users.clj",
+    "col": 1, "name-col": 6, "end-col": 29, "row": 3}
+   {"fixed-arities": [2], "end-row": 8, "name-end-col": 15, "name-end-row": 5,
+    "name-row": 5, "ns": "schairs-user-service.users", "name": "find-user",
+    "defined-by": "clojure.core/defn",
+    "filename": "src/main/schairs_user_service/users.clj",
+    "col": 1, "name-col": 7, "end-col": 15, "row": 5}
+   {"fixed-arities": [2], "end-row": 18, "name-end-col": 17, "name-end-row": 10,
+    "name-row": 10, "ns": "schairs-user-service.users", "name": "create-user",
+    "defined-by": "clojure.core/defn",
+    "filename": "src/main/schairs_user_service/users.clj",
+    "col": 1, "name-col": 7, "end-col": 19, "row": 10}
+   {"fixed-arities": [2], "end-row": 24, "name-end-col": 18, "name-end-row": 20,
+    "name-row": 20, "ns": "schairs-user-service.users", "name": "delete-user!",
+    "defined-by": "clojure.core/defn",
+    "filename": "src/main/schairs_user_service/users.clj",
+    "col": 1, "name-col": 7, "end-col": 46, "row": 20}
+   {"fixed-arities": [1], "end-row": 5, "name-end-col": 17, "name-end-row": 3,
+    "name-row": 3, "ns": "schairs-user-service.core", "name": "parse-port",
+    "defined-by": "clojure.core/defn-",
+    "filename": "src/main/schairs_user_service/core.clj",
+    "col": 1, "name-col": 8, "end-col": 35, "row": 3}
+   {"varargs-min-arity": 0, "end-row": 16, "name-end-col": 12, "name-end-row": 7,
+    "name-row": 7, "ns": "schairs-user-service.core", "name": "-main",
+    "defined-by": "clojure.core/defn",
+    "filename": "src/main/schairs_user_service/core.clj",
+    "col": 1, "name-col": 7, "end-col": 22, "row": 7}]}}

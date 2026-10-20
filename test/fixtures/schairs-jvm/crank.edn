@@ -1,0 +1,7 @@
+{:paths ["src/main"]
+ :cc {:tool :crapper :pin "9f1bead"}
+ :coverage {:adapter :cloverage-lcov
+            :lcov "lcov.info"}
+ :threshold {:fail 30 :warn 10}
+ :na []
+ :report {:edn "report.edn"}}

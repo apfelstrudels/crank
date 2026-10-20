@@ -1,0 +1,9 @@
+{:schema "crank.expected/v1"
+ :provenance "captured from moonlander@6a33ce9, 2026-10-20; anchors are the feasibility report's §2.6 validated numbers"
+ :anchors
+ [{:name "on-key!" :file "moonlander/core.cljs" :cc 18 :blocks 2 :covered 0 :cov 0.0 :crap 342.00}
+  {:name "replay-tick!" :file "moonlander/core.cljs" :cc 6 :blocks 2 :covered 0 :cov 0.0 :crap 42.00}
+  {:name "step" :file "moonlander/core.cljs" :cc 22 :blocks 53 :covered 49 :cov 0.9245 :crap 22.21}
+  {:name "new-round" :file "moonlander/core.cljs" :blocks 8 :covered 3 :cov 0.375}]
+ :na-files ["moonlander/render/pixi.cljs" "moonlander/boot.cljs"]
+ :fidelity {:records 675 :unmapped 38 :map-missing 0 :outside-include 0 :entries 13}}

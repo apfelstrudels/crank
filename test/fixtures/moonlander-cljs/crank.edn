@@ -1,0 +1,12 @@
+{:paths ["src/main"]
+ :cc {:tool :sift :pin "8125fe8"}
+ :coverage {:adapter :v8-shadow
+            :v8-dirs ["coverage/sim" "coverage/render"]
+            :cljs-runtime "cljs-runtime"
+            :include-glob #"moonlander[^/]*\.js$"}
+ :threshold {:fail 30 :warn 10}
+ :na [{:file "moonlander/render/pixi.cljs"
+       :reason "browser-only pixi shell; no Node coverage path. The pure scene mapping it renders (moonlander.render.scene) is exercised at 100% by the sim-render suite."}
+      {:file "moonlander/boot.cljs"
+       :reason "browser entry point; no Node coverage path. It only wires the pixi renderer into window.onload."}]
+ :report {:edn "report.edn"}}

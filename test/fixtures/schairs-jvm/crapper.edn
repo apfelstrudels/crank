@@ -1,0 +1,5 @@
+[{:name find-user :namespace schairs-user-service.users :complexity 2 :coverage nil :crap nil}
+ {:name create-user :namespace schairs-user-service.users :complexity 4 :coverage nil :crap nil}
+ {:name delete-user! :namespace schairs-user-service.users :complexity 3 :coverage nil :crap nil}
+ {:name parse-port :namespace schairs-user-service.core :complexity 2 :coverage nil :crap nil}
+ {:name -main :namespace schairs-user-service.core :complexity 6 :coverage nil :crap nil}]
