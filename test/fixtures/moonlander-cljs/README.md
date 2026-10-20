@@ -3,7 +3,7 @@
 **Provenance: captured, not constructed.** Every input in this directory is a real
 artifact captured 2026-10-20 from the moonlander checkout at
 `/Users/clausspacil/moonlander/projects/moonlander`, commit `6a33ce9`
-("feat(render): render moonlander with PixiJS … (#18)") — the exact commit the
+("feat(render): render moonlander with PixiJS … (#18)") - the exact commit the
 CRAP feasibility report validated. Files were *excerpted* (whole entries dropped,
 never edited) to keep the fixture small; the content of every retained entry is
 byte-identical to the capture.
@@ -35,7 +35,7 @@ clojure -M:sift lint --no-kondo --edn --config crank-sift.edn src/main
 
 ## Pinned anchors (from the feasibility report §2.6, reproduced by this fixture)
 
-- `on-key!` CRAP **342.00** (CC 18, 2 blocks, cov 0.0 — never called headlessly)
+- `on-key!` CRAP **342.00** (CC 18, 2 blocks, cov 0.0 - never called headlessly)
 - `replay-tick!` CRAP **42.00** (CC 6, 2 blocks, cov 0.0)
 - `step` CRAP **22.21** (CC 22, 53 blocks, 49 covered = 92.5%)
 - `new-round` cov **37.5%** (3 of 8 blocks; only the `[seed level]` arity is exercised)

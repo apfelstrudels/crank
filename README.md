@@ -58,7 +58,7 @@ Unknown keys, wrong types, an adapter missing its required inputs, or an
 Adopting repos consume crank as a pinned git dep plus one alias:
 
 ```edn
-{:aliases {:crank {:extra-deps {io.github.schairs/crank {:git/sha "<pinned sha>"}}
+{:aliases {:crank {:extra-deps {io.github.apfelstrudels/crank {:git/sha "<pinned sha>"}}
                    :main-opts ["-m" "crank.main"]}}}
 ```
 

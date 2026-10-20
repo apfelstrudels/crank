@@ -5,17 +5,17 @@ not available on the host where this fixture was built. These inputs were writte
 by hand to the *real formats* the design spec pins down, and they are the realest
 inputs that could honestly be produced without the repository:
 
-- `lcov.info` — real Cloverage LCOV format (`TN:` / `SF:` / `DA:` / `LF:` / `LH:` /
+- `lcov.info` - real Cloverage LCOV format (`TN:` / `SF:` / `DA:` / `LF:` / `LH:` /
   `end_of_record`; Cloverage emits no `FN`/`BRDA` records), two `SF` sections, hits
   chosen so the fixture exercises: a fully-covered defn, a partially-covered defn,
   a never-called defn in a covered file (true 0%, warn band), and a never-called
   complex `-main` (gate breach).
-- `kondo-analysis.json` — real clj-kondo analysis shape (`:analysis
+- `kondo-analysis.json` - real clj-kondo analysis shape (`:analysis
   :var-definitions` entries with the key set kondo v2025.10.23 emits), line extents
   consistent with the `DA:` lines in `lcov.info`.
-- `crapper.edn` — real `.metrics/crap.edn` shape emitted by crapper `9f1bead`
+- `crapper.edn` - real `.metrics/crap.edn` shape emitted by crapper `9f1bead`
   (`{:name :namespace :complexity :coverage nil :crap nil}` entries, **no line
-  numbers** — which is why this lane joins CC to extents by `(ns, name)`).
+  numbers** - which is why this lane joins CC to extents by `(ns, name)`).
 
 The namespace/file names (`schairs-user-service.users`, `.core`,
 `src/main/schairs_user_service/…`) are plausible inventions, not knowledge about

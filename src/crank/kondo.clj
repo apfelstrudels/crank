@@ -19,7 +19,8 @@
 
 (defn parse-extents
   "Parse clj-kondo analysis JSON into extents:
-   {:file :name :ns :row :end-row :fn?} - :file relative to a configured source root."
+   {:file :name :ns :row :end-row :fn?} - :file relative to a configured source root.
+   A .cljc defn is reported once per language; it is one extent."
   [json-text source-roots]
   (let [analysis (:analysis (json/read-str json-text :key-fn keyword))]
     (->> (:var-definitions analysis)
@@ -31,6 +32,8 @@
                  :end-row (:end-row v)
                  :fn? (boolean (some #(str/ends-with? (str (:defined-by v)) %)
                                      ["/defn" "/defn-" "/defmulti"]))}))
+         (reduce (fn [m e] (assoc m ((juxt :file :ns :name :row) e) e)) {})
+         vals
          (sort-by (juxt :file :row)))))
 
 (defn extents
