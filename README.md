@@ -86,6 +86,21 @@ builds - missing coverage is a loud precondition failure, not 0%.
   non-function kondo extent is excluded from scoring and counted too. A defn in a loaded file with no attributed blocks is a true 0%
   (uncalled or compiled away), never N/A. N/A only ever comes from a
   config `:na` entry with a written reason.
+- A defn the coverage lane never compiles (a clj-only `#?` branch in the
+  `:v8-shadow` lane, a cljs-only branch in the `:cloverage-lcov` lane) is
+  excluded from the gate and counted as `lane-mismatched defns` in the
+  fidelity report - never scored at a fabricated 0%.
+- `.cljc` sources are scored per lane language. sift reads reader
+  conditionals with the features of the file extension, so in the
+  `:v8-shadow` lane each `.cljc` is additionally scored through a
+  `.cljs`-feature copy and a cljs-only defn is gated like any other. For
+  a defn shared by both branches, the lane-matched reading is the CC of
+  record; the discarded cross-lane reading is counted as
+  `deduped-cross-lane-unit` and the pass itself as `CC entries via the
+  .cljc cljs-feature pass`, both in the fidelity report.
+- Coverage records attribute to the outermost enclosing scored defn: a
+  nested `(defn inner ...)` (skipped as `non-defn-unit`) contributes its
+  records to the enclosing defn that actually gets a row.
 
 ## Development
 

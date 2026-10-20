@@ -10,9 +10,11 @@
    sift picks reader-conditional features from the file extension, so a .cljc
    source is scored with clj features only. In the v8-shadow lane each .cljc
    is additionally scored through a temp .cljs copy (identical content, so
-   identical lines) and the extra units are mapped back to the real path and
-   marked :via :cljc-cljs-pass - a cljs-only defn in a .cljc is gated like any
-   other, and the pass is counted in the fidelity report."
+   identical lines) and the units are mapped back to the real path and marked
+   :via :cljc-cljs-pass - a cljs-only defn in a .cljc is gated like any other.
+   For a defn shared by both branches the lane-matched reading is the CC of
+   record: the cljs-pass unit wins, and the discarded clj reading is counted
+   as a :deduped-cross-lane-unit skip, never silently dropped."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [crank.core :as core]
@@ -87,13 +89,18 @@
     (let [files (mapcat expand paths)
           base (units->cc-entries (map file-units files) paths)]
       (if (= :v8-shadow (:adapter coverage))
-        (let [seen (set (map (juxt :name :file :line) base))
-              cljs-pass (map (fn [f] (-> (cljs-feature-copy f)
-                                         file-units
-                                         (assoc :file (str f))))
-                             (filter cljc-file? files))]
-          (into base
-                (comp (map #(assoc % :via :cljc-cljs-pass))
-                      (remove #(contains? seen ((juxt :name :file :line) %))))
-                (units->cc-entries cljs-pass paths)))
+        (let [cljs-pass (mapv #(assoc % :via :cljc-cljs-pass)
+                              (units->cc-entries
+                               (map (fn [f] (-> (cljs-feature-copy f)
+                                                file-units
+                                                (assoc :file (str f))))
+                                    (filter cljc-file? files))
+                               paths))
+              cljs-keys (set (map (juxt :name :file :line) cljs-pass))]
+          (into (mapv (fn [e]
+                        (cond-> e
+                          (contains? cljs-keys ((juxt :name :file :line) e))
+                          (assoc :skip :deduped-cross-lane-unit)))
+                      base)
+                cljs-pass))
         base))))

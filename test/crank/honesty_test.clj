@@ -228,9 +228,53 @@
           (is (= 1 (get-in res [:fidelity :lane-mismatched-defns])))
           (is (not-any? #(= "server-only" (:name %)) (:rows res))))
         (testing "the cljs-feature pass is counted and printed, never silent"
-          (is (= 1 (get-in res [:fidelity :cljc-cljs-pass-entries])))
+          (is (= 2 (get-in res [:fidelity :cljc-cljs-pass-entries])))
           (is (str/includes? (core/fidelity-report res)
-                             "1 CC entries via the .cljc cljs-feature pass")))))))
+                             "2 CC entries via the .cljc cljs-feature pass")))
+        (testing "the discarded clj reading of the shared defn is counted under its named reason"
+          (is (= {:deduped-cross-lane-unit 1} (get-in res [:fidelity :cc-skipped])))
+          (is (str/includes? (core/fidelity-report res) "deduped-cross-lane-unit 1")))))))
+
+(deftest rule-4-cljc-shared-defn-gates-at-the-lane-matched-cc
+  (let [dir (doto (File/createTempFile "crank-cljc" "") (.delete) (.mkdirs))
+        _ (spit (File. dir "util.cljc")
+                (str/join "\n" ["(ns util)"
+                                "(defn handle [x]"
+                                "  #?(:clj x"
+                                "     :cljs (cond (nil? x) 0 (string? x) 1 (keyword? x) 2 (symbol? x) 3 :else 4)))"]))
+        extent [{:file "util.cljc" :name "handle" :ns "util" :row 2 :end-row 4 :fn? true :langs #{:clj :cljs}}]
+        v8-entries (core/measure (sift/->SiftSource) {:paths [(str dir)] :coverage {:adapter :v8-shadow}})
+        handle (first (remove :skip v8-entries))]
+    (testing "the cljs-pass reading (CC 5) is the measurement of record, not the clj reading (CC 1)"
+      (is (= 5 (:cc handle)))
+      (is (= :cljc-cljs-pass (:via handle))))
+    (testing "the discarded clj reading is counted under its own named reason, never silently dropped"
+      (is (= [:deduped-cross-lane-unit] (map :skip (filter :skip v8-entries)))))
+    (testing "the defn gates at the cljs CC: CRAP 5 breaches a fail-3 gate the clj reading (CRAP 1) would pass"
+      (let [res (core/join {:cc-entries v8-entries :extents extent
+                            :records [{:file "util.cljc" :line 3 :hits 1}]
+                            :metric :block-coverage :na []})
+            row (first (:rows res))]
+        (is (= 5 (:cc row)))
+        (is (= 5.0 (:crap row)))
+        (is (= :fail (core/band (:crap row) {:fail 3 :warn 1})))
+        (is (= {:deduped-cross-lane-unit 1} (get-in res [:fidelity :cc-skipped])))))
+  (let [dir (doto (File/createTempFile "crank-cljc" "") (.delete) (.mkdirs))
+        _ (spit (File. dir "util.cljc")
+                (str/join "\n" ["(ns util)"
+                                "(defn handle [x]"
+                                "  #?(:clj (cond (nil? x) 0 (string? x) 1 (keyword? x) 2 (symbol? x) 3 :else 4)"
+                                "     :cljs x))"]))
+        entries (core/measure (sift/->SiftSource) {:paths [(str dir)] :coverage {:adapter :cloverage-lcov}})]
+    (testing "the lcov lane symmetrically gates at the clj reading, with no cljs pass and no discards"
+      (is (= [5] (map :cc entries)))
+      (is (not-any? :via entries))
+      (is (not-any? :skip entries))
+      (let [res (core/join {:cc-entries entries
+                            :extents [{:file "util.cljc" :name "handle" :ns "util" :row 2 :end-row 4 :fn? true :langs #{:clj :cljs}}]
+                            :records [{:file "util.cljc" :line 3 :hits 1}]
+                            :metric :line-coverage :na []})]
+        (is (= :fail (core/band (:crap (first (:rows res))) {:fail 3 :warn 1}))))))))
 
 (deftest rule-4-nested-defn-records-attribute-to-the-scored-outer-defn
   (let [res (core/join {:cc-entries [{:name "outer" :file "a.clj" :line 1 :cc 4}
