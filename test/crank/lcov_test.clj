@@ -22,7 +22,7 @@
 
 (deftest parse-out-of-order-and-ignored-records
   (testing "out-of-order DA lines are kept in order; BRDA/FN ignored and counted"
-    (let [text (str "SF:src/main/a.clj\nFN:3,a$f\nFNDA:0,a$f\nDA:20,0\nBRDA:20,0,0,-\nDA:4,2\nDA:9,1\nend_of_record\n")
+    (let [text "SF:src/main/a.clj\nFN:3,a$f\nFNDA:0,a$f\nDA:20,0\nBRDA:20,0,0,-\nDA:4,2\nDA:9,1\nend_of_record\n"
           {:keys [records ignored]} (lcov/parse-lcov text ["src/main"])]
       (is (= [20 4 9] (map :line records)))
       (is (= 3 ignored)))))

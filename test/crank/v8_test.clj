@@ -46,7 +46,7 @@
     (let [dir (io/file (System/getProperty "java.io.tmpdir") (str "crank-v8z-" (System/nanoTime)))]
       (.mkdirs dir)
       (spit (io/file dir "coverage-1.json")
-            (str "{\"result\":[{\"url\":\"file:///tmp/other.js\",\"functions\":[]}]}"))
+            "{\"result\":[{\"url\":\"file:///tmp/other.js\",\"functions\":[]}]}")
       (let [e (try (core/collect (v8/->V8Shadow)
                                {:coverage {:v8-dirs [(str dir)]
                                            :cljs-runtime (str fixture "/cljs-runtime")

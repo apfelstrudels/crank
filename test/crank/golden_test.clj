@@ -65,7 +65,7 @@
         {:keys [metric records]} (core/collect (lcov/->CloverageLcov)
                                                {:paths ["src/main"]
                                                 :coverage {:lcov (str sc "/lcov.info")}})
-        {:keys [rows fidelity] :as res}
+        {:keys [rows fidelity]}
         (core/join {:cc-entries cc :extents extents :records records
                     :metric metric :na []})]
     (testing "metric is stated: line coverage for the LCOV lane (rule 6)"

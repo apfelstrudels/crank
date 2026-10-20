@@ -169,7 +169,7 @@
 (defn table
   "The one worst-first table: scored rows by CRAP desc, warn band marked,
    then the N/A section with each row's configured reason."
-  [{:keys [rows na-rows metric]} {:keys [fail warn] :as threshold}]
+  [{:keys [rows na-rows metric]} threshold]
   (let [unit-name (if (= metric :block-coverage) "blocks" "lines")
         header (fmt "%-28s %-34s %3s %7s %6s %8s" "fn" "file" "CC" unit-name "cov%" "CRAP")
         line (apply str (repeat (count header) "-"))

@@ -50,7 +50,7 @@
 
 (defrecord SiftSource []
   core/ComplexitySource
-  (measure [_ {:keys [paths] :as cfg}]
+  (measure [_ {:keys [paths]}]
     (let [linter (sift/linter crank-rule)
           inputs (into []
                        (comp (mapcat expand)

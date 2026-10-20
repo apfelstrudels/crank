@@ -1,10 +1,10 @@
 (ns crank.honesty-test
   "One test per honest-by-construction rule (design spec §7)."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [crank.core :as core]
             [crank.cov.lcov :as lcov]
+            [crank.kondo]
             [crank.main :as main])
   (:import [java.io File]))
 

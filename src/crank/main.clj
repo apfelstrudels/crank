@@ -106,7 +106,7 @@
 (defn run
   "Returns a process exit code."
   [args]
-  (let [{:keys [help report-only check config threshold warn] :as opts} (parse-args args)]
+  (let [{:keys [help report-only check config threshold warn]} (parse-args args)]
     (if help
       (do (println usage) 0)
       (let [cfg (load-config config)
