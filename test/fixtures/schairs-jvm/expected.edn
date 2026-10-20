@@ -1,0 +1,10 @@
+{:schema "crank.expected/v1"
+ :provenance "CONSTRUCTED, not captured - see README.md. Expected CRAP values hand-computed with the spec formula CRAP = CC^2 * (1-cov)^3 + CC."
+ :metric :line-coverage
+ :anchors
+ [{:name "-main" :ns "schairs-user-service.core" :file "schairs_user_service/core.clj" :cc 6 :lines 7 :covered 0 :cov 0.0 :crap 42.00 :band :fail}
+  {:name "delete-user!" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 3 :lines 3 :covered 0 :cov 0.0 :crap 12.00 :band :warn}
+  {:name "create-user" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 4 :lines 6 :covered 5 :cov 0.8333 :crap 4.07 :band :ok}
+  {:name "find-user" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 2 :lines 2 :covered 2 :cov 1.0 :crap 2.00 :band :ok}
+  {:name "parse-port" :ns "schairs-user-service.core" :file "schairs_user_service/core.clj" :cc 2 :lines 1 :covered 1 :cov 1.0 :crap 2.00 :band :ok}]
+ :gate {:threshold 30 :breach? true :breaching ["-main"]}}

@@ -1,0 +1,12 @@
+{
+  "name": "crank",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The fleet's first-party CRAP tool (node side: v8-shadow coverage remap only)",
+  "scripts": {
+    "remap": "node resources/crank/remap.mjs"
+  },
+  "dependencies": {
+    "@jridgewell/trace-mapping": "0.3.31"
+  }
+}

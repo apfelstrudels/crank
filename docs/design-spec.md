@@ -90,8 +90,9 @@ defaults, and both adoption paths are spelled out step by step.
 
 1. **Config load** - `.crank.edn` + CLI overrides. Unknown keys are a hard error.
 2. **Extents** - run `clj-kondo --lint <paths> --config '{:output {:analysis true :format :json}}'`;
-   keep `:row`/`:end-row`/`:name`/`:ns` per var-definition. clj-kondo parses both `.clj` and
-   `.cljs`, so this stage is stack-neutral. (Evidence: feasibility §2.6 and Appendix A use
+   keep `:row`/`:end-row`/`:name`/`:ns` plus the var's languages and defining form per
+   var-definition (a `.cljc` defn is one extent whose languages are the union). clj-kondo
+   parses `.clj`, `.cljs` and `.cljc`, so this stage is stack-neutral. (Evidence: feasibility §2.6 and Appendix A use
    exactly this; 151 var-defs with `row`/`end-row` on moonlander.)
 3. **Complexity** - via the configured `ComplexitySource`; produces `{:name :ns :file :line :cc}`
    per defn. CC values are tool-relative; the pin is recorded in the report.
@@ -150,7 +151,7 @@ A future `:v8-ts` adapter (supabase lane, if it ever needs honest per-function n
 
 ```clojure
 (defprotocol ComplexitySource
-  (measure [this cfg]))  ;; => seq of {:name :ns :file :line :cc}
+  (measure [this cfg]))  ;; => seq of {:name :ns :file :line :cc}, optionally {:skip reason}
 ```
 
 Implementations:
@@ -166,7 +167,16 @@ Implementations:
 - **`:sift` (alternative).** sift v0.2.0 pinned at sha `8125fe8`, consumed as a Clojure git
   dep and invoked in-process (it is a Clojure library; CLI form `sift lint --no-kondo --edn`
   validated in feasibility §2.6). Emits `:line`, so its extent join is the prototype's exact
-  `(file, name, line±2)` match. `<fn>` anonymous entries are skipped by design.
+  `(file, name, line±2)` match. Only top-level def-form units are defn candidates; every
+  other sift unit (`<fn>`, named inner fns, `letfn` bindings, `defmethod` bodies,
+  `defrecord`/`deftype`/`reify`/`extend-*` methods) has no var-definition extent, so it is
+  skipped by design, never fed to the match, and counted in the fidelity report as a
+  `non-defn-unit` skip. sift reads reader conditionals with the features of the file
+  extension, so in the `:v8-shadow` lane each `.cljc` is additionally scored through a temp
+  `.cljs` copy (the pin is untouched - the workaround is invocation-only) and a cljs-only
+  defn is gated like any other. For a defn shared by both branches the lane-matched reading
+  is the CC of record; the discarded cross-lane reading is counted in the fidelity report
+  as a `deduped-cross-lane-unit` skip, never silently dropped.
 
 **Pinning is part of the contract:** the resolved tool and pin are printed in every report
 header. Absolute CC is tool-relative (crapper counts each `and`/`or` form once; sift counts
@@ -195,7 +205,7 @@ tool per repo, never compare absolute CC across tools, switching tools re-baseli
 
 - **Inputs:** one or more `NODE_V8_COVERAGE` output dirs (raw V8 JSON, one file per run), the
   shadow-cljs `cljs-runtime` dir holding the compiled `*.js` + `*.js.map`, and an include
-  regex selecting the project's runtime files (e.g. `#"moonlander[^/]*\.js$"`).
+  regex selecting the project's runtime files (e.g. `#"cljs-runtime/moonlander\.[^/]*\.js$"`).
 - **Remap helper:** `resources/crank/remap.mjs` (~90 lines, distilled from the validated
   Appendix A prototype) run via `node`. It maps each V8 block's **start offset** through the
   shadow source map with `@jridgewell/trace-mapping` (pinned; this is the exact library the
@@ -255,6 +265,9 @@ per-defn rows, fidelity counters) for CI artifacts and future trend tooling.
 2. **Zero blocks is not zero coverage.** A defn with attributed records all at `hits 0` is a
    true 0% (the file was loaded; the function was never called). A defn whose file produced
    **no** records was never loaded - that is "no coverage path" and falls under rule 3.
+   A defn the coverage lane never compiles (a clj-only `#?` branch in the `:v8-shadow` lane,
+   a cljs-only branch in the `:cloverage-lcov` lane) is excluded from the gate and counted
+   in the fidelity report - never scored at a fabricated 0%.
 3. **N/A requires a written justification in config.** `{:na [{:file "moonlander/render/pixi.cljs"
    :reason "browser-only shell; the pure scene.cljs it renders is tested at 100%"}]}`.
    An undeclared no-coverage-path defn => exit 1 listing it. N/A rows never enter the gate and
@@ -293,7 +306,7 @@ per-defn rows, fidelity counters) for CI artifacts and future trend tooling.
             ;; :v8-shadow:
             ;; :v8-dirs [".cov/sim" ".cov/render"]
             ;; :cljs-runtime ".shadow-cljs/builds"
-            ;; :include-glob #"moonlander[^/]*\.js$"
+            ;; :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"
             }
  :threshold {:fail 30 :warn 10}             ;; schairs sets {:fail 10 :warn 5}; see §10
  :na []                                     ;; {:file ... :reason ...} entries, rule 3
@@ -360,7 +373,7 @@ the join, the table, and the gate.
 2. `.crank.edn`: `:cc {:tool :sift :pin "8125fe8"}` (sift is the validated CC source on this
    codebase; crapper is the documented alternative), `:coverage {:adapter :v8-shadow
    :v8-dirs [".cov/sim" ".cov/render"] :cljs-runtime ".shadow-cljs/builds"
-   :include-glob #"moonlander[^/]*\.js$"}`, `:threshold {:fail 30 :warn 10}`, and the two
+   :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"}`, `:threshold {:fail 30 :warn 10}`, and the two
    `:na` entries (`pixi.cljs`, `boot.cljs`) with written reasons.
 3. New CI job (ubuntu-latest): `npm ci`; `npx shadow-cljs compile sim sim-render`;
    `NODE_V8_COVERAGE=.cov/sim node target/sim.js`;
@@ -398,7 +411,7 @@ against the ~440-line tool.
 4. **Parser unit tests (synthetic fixtures):** LCOV (multi-`SF`, out-of-order `DA`, `BRDA`
    ignored, empty file => error); crapper EDN (nil coverage keys tolerated, missing line
    numbers handled via the ns+name join, duplicate-name ambiguity => loud error); sift EDN
-   (`<fn>` skipped, line±2 extent match); kondo analysis JSON.
+   (non-defn units skipped and counted, line±2 extent match); kondo analysis JSON.
 5. **Honesty tests (the rules in §7, each with a test):** missing lcov => exit 1; empty v8
    dir => exit 1; coverage that remaps into zero configured source files (wrong build) =>
    exit 1; never-called defn (records at hits 0) => cov 0.0 scored, **not** N/A; never-loaded
