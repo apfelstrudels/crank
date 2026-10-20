@@ -19,7 +19,13 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import {TraceMap, originalPositionFor} from '@jridgewell/trace-mapping';
+import {createRequire} from 'node:module';
+
+// Resolve trace-mapping from the CALLER's project (cwd), not from this script's
+// location: crank is consumed as a git dep, so the pinned @jridgewell/trace-mapping
+// lives in the adopting repo's node_modules.
+const require = createRequire(path.join(process.cwd(), 'package.json'));
+const {TraceMap, originalPositionFor} = require('@jridgewell/trace-mapping');
 
 const usage = 'usage: remap.mjs --pair <v8-dir>=<runtime-dir> [--pair ...] --include <regex>';
 const fail = (msg) => { console.error(`remap: ${msg}`); process.exit(1); };
