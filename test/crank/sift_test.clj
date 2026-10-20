@@ -9,7 +9,7 @@
 
 (deftest units-are-root-relative-or-loud
   (testing "a file under a configured root is made root-relative"
-    (is (= [{:name "step" :file "a/core.clj" :line 10 :cc 4}]
+    (is (= [{:name "step" :kind "defn" :file "a/core.clj" :line 10 :cc 4}]
            (sift/units->cc-entries [{:file "src/main/a/core.clj" :units [(unit "defn" "step" 10)]}]
                                    ["src/main/"]))))
   (testing "a file outside every configured root is a hard config error, never passed through"

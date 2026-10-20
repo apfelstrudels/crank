@@ -75,7 +75,18 @@
                              :extents [{:file "a.clj" :name "f" :ns "a" :row 1 :end-row 10 :fn? true}]
                              :records [{:file "a.clj" :line 2 :hits 1}]
                              :metric :line-coverage :na []})
-                 (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+  (testing "the error names the actual unmatched form and points at the remedies"
+    (let [msg (try (core/join {:cc-entries [{:name "conn" :kind "defstate" :file "a.clj" :line 12 :cc 2}]
+                               :extents [{:file "a.clj" :name "f" :ns "a" :row 1 :end-row 10 :fn? true}]
+                               :records [{:file "a.clj" :line 2 :hits 1}]
+                               :metric :line-coverage :na []})
+                   nil
+                   (catch clojure.lang.ExceptionInfo e (ex-message e)))]
+      (is (str/includes? msg "(defstate conn) at a.clj:12"))
+      (is (not (str/includes? msg "named defns")))
+      (is (str/includes? msg ":lint-as"))
+      (is (str/includes? msg ":na")))))
 
 ;; ---- exit-code policy: --report-only relaxes the gate, never the honesty rules ---------
 
@@ -166,8 +177,7 @@
     (testing "a top-level defn failing the CC<->extent match is still exit 1"
       (let [{:keys [exit err]} (run [area])]
         (is (= 1 exit))
-        (is (str/includes? err "named defns failed the CC<->extent match"))
-        (is (str/includes? err ": f"))))))
+        (is (str/includes? err "failed the CC<->extent match - refusing to score a subset: (defn f) at a.clj:7"))))))
 
 (deftest unknown-config-key-is-a-hard-error
   (let [cfg-file (temp-config

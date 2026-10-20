@@ -44,6 +44,13 @@
       (= 1 (count candidates)) (first candidates)
       :else :ambiguous)))
 
+(defn- describe-cc-entry
+  "The unmatched form as the user wrote it: (kind name) at file:line for sift,
+   ns/name for crapper (which reports no form kind or location)."
+  [{:keys [name kind ns file line]}]
+  (str (if kind (str "(" kind " " name ")") name)
+       (if file (str " at " file ":" line) (str " in " ns))))
+
 ;; ---- IR record -> extent attribution ------------------------------------------
 
 (defn- attribute
@@ -99,8 +106,12 @@
         unmatched (into [] (comp (filter #(nil? (:extent %))) (map :cc)) matched)
         ambiguous (into [] (comp (filter #(= :ambiguous (:extent %))) (map :cc)) matched)
         _ (when (or (seq unmatched) (seq ambiguous))
-            (throw (ex-info (str "named defns failed the CC<->extent match - refusing to score a subset: "
-                                 (str/join ", " (map :name (concat unmatched ambiguous))))
+            (throw (ex-info (str "CC entries failed the CC<->extent match - refusing to score a subset: "
+                                 (str/join ", " (map describe-cc-entry (concat unmatched ambiguous)))
+                                 ". Each must be a top-level var clj-kondo analyzes: for a custom def"
+                                 " macro add a {:lint-as {my.ns/defthing clojure.core/def}} entry to"
+                                 " .clj-kondo/config.edn so its var gets extents, or declare an :na"
+                                 " entry with a :reason for the file if the form should leave the gate")
                             {:crank/error :unmatched-defn
                              :unmatched unmatched :ambiguous ambiguous})))
         rows (reduce (fn [acc {:keys [cc extent]}]

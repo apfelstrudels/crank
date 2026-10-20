@@ -35,7 +35,7 @@
                       {:crank/error :config :file file :paths source-roots}))))
 
 (defn units->cc-entries
-  "sift unit trees per file ([{:file :units}]) -> [{:name :file :line :cc}].
+  "sift unit trees per file ([{:file :units}]) -> [{:name :kind :file :line :cc}].
    A top-level unit of a def-form kind is a defn candidate; every other unit
    (nested children included) is an entry marked :skip :non-defn-unit.
    Paths are made relative to their source root so they meet the kondo extents
@@ -44,8 +44,8 @@
   (into []
         (mapcat (fn [{:keys [file units]}]
                   (let [file (root-relative source-roots file)
-                        entry (fn [{:keys [name line cyclomatic]}]
-                                {:name name :file file :line line :cc cyclomatic})]
+                        entry (fn [{:keys [name kind line cyclomatic]}]
+                                {:name name :kind kind :file file :line line :cc cyclomatic})]
                     (mapcat (fn [{:keys [kind children] :as u}]
                               (cons (cond-> (entry u)
                                       (non-defn-kinds kind) (assoc :skip :non-defn-unit))
