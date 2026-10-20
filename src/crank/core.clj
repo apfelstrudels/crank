@@ -188,7 +188,8 @@
                        :cc-entries (count cc-entries)
                        :cc-matched (count matched)
                        :cc-skipped cc-skipped
-                       :lane-mismatched-defns (count lane-out)}
+                       :lane-mismatched-defns (count lane-out)
+                       :cljc-cljs-pass-entries (count (filter #(= :cljc-cljs-pass (:via %)) cc-entries))}
                       (:fidelity rows))}))
 
 ;; ---- report -------------------------------------------------------------------
@@ -232,7 +233,8 @@
 
 (defn fidelity-report [{:keys [fidelity metric]}]
   (let [{:keys [records attributed skipped cc-entries cc-matched cc-skipped
-                non-function-units lane-mismatched-defns zero-record-defns adapter]} fidelity
+                non-function-units lane-mismatched-defns cljc-cljs-pass-entries
+                zero-record-defns adapter]} fidelity
         kvs #(str/join ", " (map (fn [[k v]] (str (name k) " " v)) (sort-by key %)))]
     (str/join "\n"
               [(str "fidelity: adapter throughput: " (kvs (:throughput adapter))
@@ -241,9 +243,10 @@
                     records (name metric) attributed
                     (+ (:outside-gate skipped) (:inter-defn skipped))
                     (:outside-gate skipped) (:inter-defn skipped))
-               (fmt "fidelity: %d of %d CC entries matched to extents (an unmatched defn is exit 1); CC entries skipped: %s; %d non-function units excluded; %d lane-mismatched defns excluded from this lane; %d defns at true 0%% in loaded files"
+               (fmt "fidelity: %d of %d CC entries matched to extents (an unmatched defn is exit 1); CC entries skipped: %s; %d non-function units excluded; %d lane-mismatched defns excluded from this lane; %d CC entries via the .cljc cljs-feature pass; %d defns at true 0%% in loaded files"
                     cc-matched cc-entries (if (seq cc-skipped) (kvs cc-skipped) "none")
-                    (or non-function-units 0) (or lane-mismatched-defns 0) (or zero-record-defns 0))])))
+                    (or non-function-units 0) (or lane-mismatched-defns 0)
+                    (or cljc-cljs-pass-entries 0) (or zero-record-defns 0))])))
 
 (def precision-notes
   {:block-coverage ["v8-shadow: block-start attribution wobbles +/-1 block at defn boundaries; blocks between defns are skipped by design"

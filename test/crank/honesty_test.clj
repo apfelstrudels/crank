@@ -3,6 +3,7 @@
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [crank.cc.sift :as sift]
             [crank.core :as core]
             [crank.cov.lcov :as lcov]
             [crank.kondo]
@@ -193,6 +194,43 @@
                             :metric :line-coverage :na []})]
         (is (= ["shared"] (map :name (:rows res))))
         (is (= 1 (get-in res [:fidelity :lane-mismatched-defns])))))))
+
+(deftest rule-4-cljc-cljs-feature-pass-in-the-v8-lane
+  (let [dir (doto (File/createTempFile "crank-cljc" "") (.delete) (.mkdirs))
+        _ (spit (File. dir "util.cljc")
+                (str/join "\n" ["(ns util)"
+                                "(defn shared [x] (inc x))"
+                                "#?(:clj (defn server-only [x] (if x 1 2)))"
+                                "#?(:cljs (defn format-cell [x] (if x (str x) \"-\")))"]))
+        measure (fn [adapter]
+                  (core/measure (sift/->SiftSource) {:paths [(str dir)] :coverage {:adapter adapter}}))
+        v8-entries (measure :v8-shadow)
+        v8-defns (remove :skip v8-entries)]
+    (testing "the cljs pass adds exactly the cljs-only units; shared defns are not doubled"
+      (is (= ["format-cell" "server-only" "shared"] (sort (map :name v8-defns))))
+      (is (= ["shared"] (map :name (filter #(= "shared" (:name %)) v8-defns)))))
+    (testing "the lcov lane is unchanged: no cljs pass, the cljs-only defn stays unseen by design"
+      (is (= ["server-only" "shared"] (sort (map :name (remove :skip (measure :cloverage-lcov)))))))
+    (testing "the cljs-only defn joins, gets a row, and gates in the v8-shadow lane"
+      (let [extents [{:file "util.cljc" :name "shared" :ns "util" :row 2 :end-row 2 :fn? true :langs #{:clj :cljs}}
+                     {:file "util.cljc" :name "server-only" :ns "util" :row 3 :end-row 3 :fn? true :langs #{:clj}}
+                     {:file "util.cljc" :name "format-cell" :ns "util" :row 4 :end-row 4 :fn? true :langs #{:cljs}}]
+            res (core/join {:cc-entries v8-entries :extents extents
+                            :records [{:file "util.cljc" :line 2 :hits 1}
+                                      {:file "util.cljc" :line 4 :hits 0}]
+                            :metric :block-coverage :na []})
+            format-cell (first (filter #(= "format-cell" (:name %)) (:rows res)))]
+        (is (some? format-cell))
+        (is (= 0.0 (:cov format-cell)))
+        (is (= 6.0 (:crap format-cell)))
+        (is (= :ok (core/band (:crap format-cell) {:fail 30 :warn 10})))
+        (testing "the clj-only defn stays excluded-and-counted per the lane ruling"
+          (is (= 1 (get-in res [:fidelity :lane-mismatched-defns])))
+          (is (not-any? #(= "server-only" (:name %)) (:rows res))))
+        (testing "the cljs-feature pass is counted and printed, never silent"
+          (is (= 1 (get-in res [:fidelity :cljc-cljs-pass-entries])))
+          (is (str/includes? (core/fidelity-report res)
+                             "1 CC entries via the .cljc cljs-feature pass")))))))
 
 (deftest rule-4-nested-defn-records-attribute-to-the-scored-outer-defn
   (let [res (core/join {:cc-entries [{:name "outer" :file "a.clj" :line 1 :cc 4}

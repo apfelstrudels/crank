@@ -5,7 +5,14 @@
    <fn>, named inner fns, letfn bindings, defmethod bodies, and
    defrecord/deftype/reify/extend-* methods - has no var-definition extent, so
    it is excluded by design and counted as a :non-defn-unit skip, never fed to
-   the extent match."
+   the extent match.
+
+   sift picks reader-conditional features from the file extension, so a .cljc
+   source is scored with clj features only. In the v8-shadow lane each .cljc
+   is additionally scored through a temp .cljs copy (identical content, so
+   identical lines) and the extra units are mapped back to the real path and
+   marked :via :cljc-cljs-pass - a cljs-only defn in a .cljc is gated like any
+   other, and the pass is counted in the fidelity report."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [crank.core :as core]
@@ -62,7 +69,31 @@
                       {:crank/error :cc-tool-failed :file path})))
     {:file path :units functions}))
 
+(defn- cljc-file? [f] (str/ends-with? (.getName (io/file f)) ".cljc"))
+
+(defn- cljs-feature-copy
+  "A temp .cljs copy of a .cljc source (identical content, identical lines) so
+   the pinned sift scores it with cljs features; the units map back to the
+   real path."
+  [f]
+  (let [tmp (java.io.File/createTempFile "crank-cljc-" ".cljs")]
+    (.deleteOnExit tmp)
+    (spit tmp (slurp f))
+    tmp))
+
 (defrecord SiftSource []
   core/ComplexitySource
-  (measure [_ {:keys [paths]}]
-    (units->cc-entries (map file-units (mapcat expand paths)) paths)))
+  (measure [_ {:keys [paths coverage]}]
+    (let [files (mapcat expand paths)
+          base (units->cc-entries (map file-units files) paths)]
+      (if (= :v8-shadow (:adapter coverage))
+        (let [seen (set (map (juxt :name :file :line) base))
+              cljs-pass (map (fn [f] (-> (cljs-feature-copy f)
+                                         file-units
+                                         (assoc :file (str f))))
+                             (filter cljc-file? files))]
+          (into base
+                (comp (map #(assoc % :via :cljc-cljs-pass))
+                      (remove #(contains? seen ((juxt :name :file :line) %))))
+                (units->cc-entries cljs-pass paths)))
+        base))))
