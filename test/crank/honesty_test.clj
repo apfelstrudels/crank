@@ -1,0 +1,126 @@
+(ns crank.honesty-test
+  "One test per honest-by-construction rule (design spec §7)."
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [deftest is testing]]
+            [crank.core :as core]
+            [crank.cov.lcov :as lcov]
+            [crank.main :as main])
+  (:import [java.io File]))
+
+;; ---- rules 1-3 and 6 live at the adapter/core seam -------------------------------------
+
+(deftest rule-1-never-fabricate-coverage
+  (testing "missing coverage input is a hard error naming the path; no code path defaults cov"
+    (is (= :missing-coverage
+           (:crank/error (try (core/validate-inputs (lcov/->CloverageLcov)
+                                                    {:coverage {:lcov "definitely/missing.info"}})
+                              (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
+(deftest rule-2-zero-blocks-is-not-zero-coverage
+  (let [extents [{:file "a.clj" :name "f" :ns "a" :row 1 :end-row 10 :fn? true}
+                 {:file "b.clj" :name "g" :ns "b" :row 1 :end-row 10 :fn? true}]
+        cc [{:name "f" :file "a.clj" :line 1 :cc 6}
+            {:name "g" :file "b.clj" :line 1 :cc 6}]]
+    (testing "never-called defn (records at hits 0) is a true 0% and is scored"
+      (let [res (core/join {:cc-entries cc :extents extents
+                            :records [{:file "a.clj" :line 2 :hits 0}
+                                      {:file "b.clj" :line 2 :hits 0}]
+                            :metric :block-coverage :na []})]
+        (is (= [0.0 0.0] (map :cov (:rows res))))
+        (is (= [42.0 42.0] (map :crap (:rows res))))))
+    (testing "never-loaded defn (file produced no records) is NOT 0% - it needs :na"
+      (is (= :undeclared-no-coverage-path
+             (:crank/error
+              (try (core/join {:cc-entries cc :extents extents
+                               :records [{:file "a.clj" :line 2 :hits 0}]
+                               :metric :block-coverage :na []})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
+
+(deftest rule-3-na-requires-written-justification
+  (let [extents [{:file "a.clj" :name "f" :ns "a" :row 1 :end-row 10 :fn? true}
+                 {:file "b.clj" :name "g" :ns "b" :row 1 :end-row 10 :fn? true}]
+        cc [{:name "f" :file "a.clj" :line 1 :cc 6}
+            {:name "g" :file "b.clj" :line 1 :cc 60}]
+        records [{:file "a.clj" :line 2 :hits 1}]]
+    (testing "declared :na yields an N/A row with the reason and never enters the gate"
+      (let [res (core/join {:cc-entries cc :extents extents :records records
+                            :metric :block-coverage
+                            :na [{:file "b.clj" :reason "no coverage path in this lane"}]})]
+        (is (= ["g"] (map :name (:na-rows res))))
+        (is (= ["no coverage path in this lane"] (map :reason (:na-rows res))))
+        ;; g would breach at CC 60, cov 0 (CRAP 3660) - as N/A it must not gate
+        (is (not-any? #(= "g" (:name %)) (:rows res)))
+        (is (not-any? #(= :fail (core/band (:crap %) {:fail 30 :warn 10})) (:rows res)))))
+    (testing "an :na entry matching nothing in the extents is a hard config error"
+      (is (= :config
+             (:crank/error
+              (try (core/join {:cc-entries cc :extents extents :records records
+                               :metric :line-coverage
+                               :na [{:file "nope.clj" :reason "stale"}]})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
+
+(deftest rule-4-unmatched-named-defn-is-loud
+  (testing "a CC entry with no extent is exit 1, never a silently dropped row"
+    (is (= :unmatched-defn
+           (:crank/error
+            (try (core/join {:cc-entries [{:name "phantom" :file "a.clj" :line 99 :cc 3}]
+                             :extents [{:file "a.clj" :name "f" :ns "a" :row 1 :end-row 10 :fn? true}]
+                             :records [{:file "a.clj" :line 2 :hits 1}]
+                             :metric :line-coverage :na []})
+                 (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
+;; ---- exit-code policy: --report-only relaxes the gate, never the honesty rules ---------
+
+(defn- temp-config ^File [edn]
+  (let [f (File/createTempFile "crank" ".edn")]
+    (.deleteOnExit f)
+    (spit f edn)
+    f))
+
+(def fake-extents [{:file "a.clj" :name "f" :ns "a" :row 1 :end-row 10 :fn? true}])
+(def fake-cc [{:name "f" :file "a.clj" :line 1 :cc 6}])
+
+(defn- fake-adapter [behavior]
+  (reify core/CoverageAdapter
+    (validate-inputs [_ _]
+      (when (= :missing behavior)
+        (throw (ex-info "coverage input missing: fake" {:crank/error :missing-coverage}))))
+    (collect [_ _]
+      {:metric :line-coverage
+       :records [{:file "a.clj" :line 2 :hits 0}]
+       :counters {}})))
+
+(defn- fake-cc-source []
+  (reify core/ComplexitySource (measure [_ _] fake-cc)))
+
+(deftest report-only-relaxes-gate-never-honesty
+  (let [cfg-file (temp-config
+                  (pr-str {:paths ["src/main"]
+                           :cc {:tool :crapper :pin "test"}
+                           :coverage {:adapter :cloverage-lcov :lcov "fake.info"}
+                           :threshold {:fail 30 :warn 10}
+                           :na []}))]
+    (with-redefs [crank.kondo/extents (fn [_] fake-extents)
+                  crank.main/cc-sources {:crapper (fake-cc-source)}
+                  crank.main/coverage-adapters {:cloverage-lcov (fake-adapter :breach)}]
+      (testing "gate breach (CRAP 42 > 30) is exit 2 in gate mode"
+        (is (= 2 (main/exit-code ["--config" (str cfg-file)]))))
+      (testing "--report-only converts the same breach to exit 0"
+        (is (= 0 (main/exit-code ["--config" (str cfg-file) "--report-only"])))))
+    (with-redefs [crank.kondo/extents (fn [_] fake-extents)
+                  crank.main/cc-sources {:crapper (fake-cc-source)}
+                  crank.main/coverage-adapters {:cloverage-lcov (fake-adapter :missing)}]
+      (testing "missing coverage stays exit 1 in gate mode"
+        (is (= 1 (main/exit-code ["--config" (str cfg-file)]))))
+      (testing "missing coverage stays exit 1 under --report-only"
+        (is (= 1 (main/exit-code ["--config" (str cfg-file) "--report-only"])))))))
+
+(deftest unknown-config-key-is-a-hard-error
+  (let [cfg-file (temp-config
+                  (pr-str {:paths ["src/main"]
+                           :cc {:tool :sift :pin "8125fe8"}
+                           :coverage {:adapter :cloverage-lcov :lcov "x"}
+                           :threshold {:fail 30}
+                           :na []
+                           :grandfathered ["old/code.clj"]}))]
+    (is (= 1 (main/exit-code ["--config" (str cfg-file)])))))
