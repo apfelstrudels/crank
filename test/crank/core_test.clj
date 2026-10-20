@@ -175,4 +175,9 @@
       (is (= :sift (get-in report [:header :cc-tool])))
       (is (= "8125fe8" (get-in report [:header :cc-pin])))
       (is (= :v8-shadow (get-in report [:header :adapter])))
-      (is (= :block-coverage (get-in report [:header :metric]))))))
+      (is (= :block-coverage (get-in report [:header :metric])))
+      (is (= {:clj-kondo "v1"} (get-in (core/edn-report (assoc res :versions {:clj-kondo "v1"})
+                                                        {:cc {:tool :sift :pin "8125fe8"}
+                                                         :coverage {:adapter :v8-shadow}}
+                                                        {:fail 30 :warn 10})
+                                       [:header :versions]))))))

@@ -1,6 +1,7 @@
 (ns crank.v8-test
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [crank.core :as core]
             [crank.cov.v8 :as v8]))
@@ -15,12 +16,14 @@
 
 (deftest collect-on-golden-fixture
   (testing "real remap through node + trace-mapping reproduces the pinned counters"
-    (let [{:keys [metric records counters]} (core/collect (v8/->V8Shadow) fixture-cfg)
+    (let [{:keys [metric records counters versions]} (core/collect (v8/->V8Shadow) fixture-cfg)
           expected (:fidelity (edn/read-string (slurp (str fixture "/expected.edn"))))]
       (is (= :block-coverage metric))
       (is (= (:records expected) (count records)))
       (is (= (:unmapped expected) (:unmapped counters)))
       (is (= (:map-missing expected) (:mapMissing counters)))
+      (is (= "0.3.31" (:trace-mapping versions)))
+      (is (str/starts-with? (:node versions) "v"))
       (is (every? #(and (string? (:file %)) (pos-int? (:line %)) (nat-int? (:hits %))) records)))))
 
 (deftest validation

@@ -73,7 +73,8 @@
    1. coverage that reaches zero gated extents (wrong build) is a hard error;
    2. zero records in a loaded file is a true 0%, not N/A;
    3. no coverage path (file produced no records) requires a declared :na
-      with a written reason, else a hard error; N/A never enters the gate;
+      with a written reason, else a hard error; a declared :na always yields
+      N/A rows (loaded file or not), and N/A never enters the gate;
    4. a named defn failing the CC<->extent match is a hard error, and the
       matched/unmatched counts are reported."
   [{:keys [cc-entries extents records metric na]}]
@@ -105,6 +106,12 @@
                          (let [{:keys [total covered]} (get per-extent extent)
                                file-loaded? (contains? files-with-records (:file extent))]
                            (cond
+                             (contains? na-by-file (:file extent))
+                             (update acc :na-rows conj
+                                     (merge (select-keys extent [:name :ns :file])
+                                            {:cc (:cc cc)
+                                             :reason (get na-by-file (:file extent))}))
+
                              total
                              (let [cov (/ (double (or covered 0)) total)]
                                (update acc :rows conj
@@ -122,12 +129,6 @@
                                                   {:cc (:cc cc) :units 0 :covered 0
                                                    :cov cov :crap (crap (:cc cc) cov)}))
                                    (update-in [:fidelity :zero-record-defns] (fnil inc 0))))
-
-                             (contains? na-by-file (:file extent))
-                             (update acc :na-rows conj
-                                     (merge (select-keys extent [:name :ns :file])
-                                            {:cc (:cc cc)
-                                             :reason (get na-by-file (:file extent))}))
 
                              :else
                              (update acc :no-coverage-path conj
@@ -189,11 +190,13 @@
                                  (str "N/A (" (count na-rows) " defns, declared with written reasons; never gated):")]
                                 (map na-str na-rows)))))))
 
-(defn fidelity-report [{:keys [fidelity cc adapter metric]}]
+(defn fidelity-report [{:keys [fidelity metric]}]
   (let [{:keys [records attributed skipped cc-entries cc-matched
-                non-function-units zero-record-defns]} fidelity]
+                non-function-units zero-record-defns adapter]} fidelity]
     (str/join "\n"
-              [(fmt "fidelity: %d IR records (%s), %d attributed, %d skipped (outside-gate %d, inter-defn %d)"
+              [(str "fidelity: adapter counters (skipped before the join): "
+                    (str/join ", " (map (fn [[k v]] (str (name k) " " v)) (sort-by key adapter))))
+               (fmt "fidelity: %d IR records (%s), %d attributed, %d skipped (outside-gate %d, inter-defn %d)"
                     records (name metric) attributed
                     (+ (:outside-gate skipped) (:inter-defn skipped))
                     (:outside-gate skipped) (:inter-defn skipped))
@@ -207,14 +210,22 @@
    :line-coverage ["cloverage-lcov: line coverage; cov = covered DA / total DA inside each defn extent"
                    "CC is tool-relative; compare only within one pinned CC tool"]})
 
+(defn provenance
+  "Rule 5: every tool and version a number depends on, so it can be re-derived."
+  [{:keys [versions]} {:keys [cc coverage]}]
+  (str "inputs: cc " (name (:tool cc)) " " (:pin cc)
+       ", adapter " (name (:adapter coverage))
+       (str/join (map (fn [[k v]] (str ", " (name k) " " v)) (sort-by key versions)))))
+
 (defn edn-report
   "The machine report: schema-versioned EDN with inputs + pins, per-defn rows,
    and fidelity counters (design spec §6, §7 rule 5)."
-  [{:keys [rows na-rows fidelity metric]} {:keys [cc coverage] :as _cfg} threshold]
+  [{:keys [rows na-rows fidelity metric versions]} {:keys [cc coverage] :as _cfg} threshold]
   {:schema "crank.report/v1"
    :header {:tool "crank (git dep; the pin is the version)"
             :cc-tool (:tool cc) :cc-pin (:pin cc)
             :adapter (:adapter coverage) :metric metric
+            :versions versions
             :precision (get precision-notes metric)}
    :threshold threshold
    :rows (mapv (fn [r] (update r :crap #(/ (Math/round (* 100.0 %)) 100.0))) rows)

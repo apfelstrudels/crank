@@ -118,13 +118,14 @@
             cc-entries (core/measure cc-source cfg)
             adapter (get coverage-adapters (get-in cfg [:coverage :adapter]))
             _ (core/validate-inputs adapter cfg)
-            {:keys [metric records counters]} (core/collect adapter cfg)
+            {:keys [metric records counters versions]} (core/collect adapter cfg)
             result (core/join {:cc-entries cc-entries :extents extents
                                :records records :metric metric :na (:na cfg)})
-            result (update result :fidelity merge {:adapter counters})]
-        (println (core/fidelity-report
-                  {:fidelity (:fidelity result)
-                   :adapter (get-in cfg [:coverage :adapter]) :metric metric}))
+            result (-> result
+                       (update :fidelity merge {:adapter counters})
+                       (assoc :versions (merge {:clj-kondo (kondo/version)} versions)))]
+        (println (core/provenance result cfg))
+        (println (core/fidelity-report result))
         (doseq [note (core/precision-notes metric)]
           (println "precision:" note))
         (if check

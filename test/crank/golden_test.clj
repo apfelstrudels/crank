@@ -21,7 +21,7 @@
                              (assoc :v8-dirs [(str ml "/coverage/sim") (str ml "/coverage/render")]
                                     :cljs-runtime (str ml "/cljs-runtime"))))
         extents (kondo/parse-extents (slurp (str ml "/kondo-analysis.json")) ["src/main"])
-        cc (sift/findings->cc-entries (edn/read-string (slurp (str ml "/sift.edn"))) ["src/main"])
+        cc (sift/findings->cc-entries (edn/read-string (slurp (str ml "/sift.edn"))) ["../moonlander/src/main"])
         {:keys [metric records counters]} (core/collect (v8/->V8Shadow) cov-cfg)]
     (assoc (core/join {:cc-entries cc :extents extents :records records
                        :metric metric :na (:na cfg)})

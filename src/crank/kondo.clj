@@ -36,6 +36,12 @@
          vals
          (sort-by (juxt :file :row)))))
 
+(defn version []
+  (let [{:keys [exit out]} (sh/sh "clj-kondo" "--version")]
+    (when-not (zero? exit)
+      (throw (ex-info "clj-kondo --version failed" {:crank/error :kondo-failed})))
+    (str/replace (str/trim out) #"^clj-kondo\s+" "")))
+
 (defn extents
   "Run clj-kondo over the configured :paths and return parsed extents.
    clj-kondo exits non-zero when lint findings exist (2) or on errors (3);

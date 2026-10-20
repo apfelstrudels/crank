@@ -12,7 +12,8 @@
 // usage: node remap.mjs --pair <v8-dir>=<runtime-dir> [--pair ...] --include <regex>
 //
 // Output: JSONL on stdout, one {"file","line","hits"} record per remapped block,
-// then a final {"summary": ...} line with skip counters. A coverage entry whose url
+// then a final {"summary": ..., "versions": ...} line with skip counters and the
+// node + trace-mapping versions. A coverage entry whose url
 // matches --include but cannot be resolved to exactly one file under its paired
 // runtime dir is a hard error (exit 1): silently dropping it would fabricate
 // "never loaded" for the defns it covers.
@@ -26,6 +27,9 @@ import {createRequire} from 'node:module';
 // lives in the adopting repo's node_modules.
 const require = createRequire(path.join(process.cwd(), 'package.json'));
 const {TraceMap, originalPositionFor} = require('@jridgewell/trace-mapping');
+let tmDir = path.dirname(require.resolve('@jridgewell/trace-mapping'));
+while (!fs.existsSync(path.join(tmDir, 'package.json'))) tmDir = path.dirname(tmDir);
+const traceMappingVersion = JSON.parse(fs.readFileSync(path.join(tmDir, 'package.json'), 'utf8')).version;
 
 const usage = 'usage: remap.mjs --pair <v8-dir>=<runtime-dir> [--pair ...] --include <regex>';
 const fail = (msg) => { console.error(`remap: ${msg}`); process.exit(1); };
@@ -132,4 +136,4 @@ for (const {v8Dir, runtimeDir} of pairs) {
     }
   }
 }
-emit({summary: counters});
+emit({summary: counters, versions: {node: process.version, traceMapping: traceMappingVersion}});

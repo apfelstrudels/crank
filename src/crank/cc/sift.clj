@@ -21,20 +21,17 @@
           :else (throw (ex-info (str "sift: not a file or directory: " path)
                                 {:crank/error :config :path path})))))
 
-(defn root-relative
-  "Make a sift :file relative to a configured source root. Handles both the
-   normal case (file starts with the root) and invocation from another cwd
-   (file merely contains the root) - the prototype's greedy strip semantics."
+(defn- root-relative
+  "Strip the matching configured source root from a sift :file.
+   A file outside every root means sift and the config disagree - loud."
   [source-roots file]
   (or (some (fn [root]
-              (let [root (str/replace root #"/+$" "")]
-                (cond (str/starts-with? file (str root "/"))
-                      (subs file (inc (count root)))
-                      (str/includes? file (str "/" root "/"))
-                      (subs file (+ (str/last-index-of file (str "/" root "/"))
-                                    (count root) 2)))))
+              (let [prefix (str (str/replace root #"/+$" "") "/")]
+                (when (str/starts-with? file prefix)
+                  (subs file (count prefix)))))
             source-roots)
-      file))
+      (throw (ex-info (str "sift reported a file outside the configured :paths: " file)
+                      {:crank/error :config :file file :paths source-roots}))))
 
 (defn findings->cc-entries
   "sift findings (data or EDN-parsed) -> [{:name :file :line :cc}], <fn> skipped.

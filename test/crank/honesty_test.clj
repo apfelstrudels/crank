@@ -1,6 +1,7 @@
 (ns crank.honesty-test
   "One test per honest-by-construction rule (design spec §7)."
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [crank.core :as core]
             [crank.cov.lcov :as lcov]
@@ -51,6 +52,13 @@
         ;; g would breach at CC 60, cov 0 (CRAP 3660) - as N/A it must not gate
         (is (not-any? #(= "g" (:name %)) (:rows res)))
         (is (not-any? #(= :fail (core/band (:crap %) {:fail 30 :warn 10})) (:rows res)))))
+    (testing "a declared :na on a LOADED file still yields N/A rows with the reason, never gated"
+      (let [res (core/join {:cc-entries cc :extents extents
+                            :records (conj records {:file "b.clj" :line 2 :hits 0})
+                            :metric :block-coverage
+                            :na [{:file "b.clj" :reason "grandfathered"}]})]
+        (is (= [["g" "grandfathered"]] (map (juxt :name :reason) (:na-rows res))))
+        (is (= ["f"] (map :name (:rows res))))))
     (testing "an :na entry matching nothing in the extents is a hard config error"
       (is (= :config
              (:crank/error
@@ -88,7 +96,8 @@
     (collect [_ _]
       {:metric :line-coverage
        :records [{:file "a.clj" :line 2 :hits 0}]
-       :counters {}})))
+       :counters {:unmapped 38}
+       :versions {:node "v22.0.0" :trace-mapping "0.3.31"}})))
 
 (defn- fake-cc-source []
   (reify core/ComplexitySource (measure [_ _] fake-cc)))
@@ -101,6 +110,7 @@
                            :threshold {:fail 30 :warn 10}
                            :na []}))]
     (with-redefs [crank.kondo/extents (fn [_] fake-extents)
+                  crank.kondo/version (constantly "v2025.10.23")
                   crank.main/cc-sources {:crapper (fake-cc-source)}
                   crank.main/coverage-adapters {:cloverage-lcov (fake-adapter :breach)}]
       (testing "gate breach (CRAP 42 > 30) is exit 2 in gate mode"
@@ -108,6 +118,7 @@
       (testing "--report-only converts the same breach to exit 0"
         (is (= 0 (main/exit-code ["--config" (str cfg-file) "--report-only"])))))
     (with-redefs [crank.kondo/extents (fn [_] fake-extents)
+                  crank.kondo/version (constantly "v2025.10.23")
                   crank.main/cc-sources {:crapper (fake-cc-source)}
                   crank.main/coverage-adapters {:cloverage-lcov (fake-adapter :missing)}]
       (testing "missing coverage stays exit 1 in gate mode"
@@ -124,3 +135,19 @@
                            :na []
                            :grandfathered ["old/code.clj"]}))]
     (is (= 1 (main/exit-code ["--config" (str cfg-file)])))))
+
+(deftest every-run-prints-provenance-and-adapter-skips
+  (let [cfg-file (temp-config
+                  (pr-str {:paths ["src/main"]
+                           :cc {:tool :crapper :pin "test"}
+                           :coverage {:adapter :cloverage-lcov :lcov "fake.info"}
+                           :na []}))]
+    (with-redefs [crank.kondo/extents (fn [_] fake-extents)
+                  crank.kondo/version (constantly "v2025.10.23")
+                  crank.main/cc-sources {:crapper (fake-cc-source)}
+                  crank.main/coverage-adapters {:cloverage-lcov (fake-adapter :breach)}]
+      (let [out (with-out-str (main/exit-code ["--config" (str cfg-file) "--check"]))]
+        (testing "rule 5: CC tool + pin, adapter, clj-kondo, node and trace-mapping versions"
+          (is (str/includes? out "inputs: cc crapper test, adapter cloverage-lcov, clj-kondo v2025.10.23, node v22.0.0, trace-mapping 0.3.31")))
+        (testing "rule 4: adapter-side skips (unmapped) are printed, not only recorded"
+          (is (str/includes? out "unmapped 38")))))))

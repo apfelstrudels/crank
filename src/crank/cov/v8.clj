@@ -14,19 +14,14 @@
             [crank.core :as core]))
 
 (defn- remap-script
-  "Locate resources/crank/remap.mjs on the classpath and give node a real file
-   (git deps are plain dirs; a jar would need a temp copy)."
+  "Locate resources/crank/remap.mjs on the classpath (crank ships as a git
+   dep, a plain directory, so it is a real file node can run)."
   []
   (let [u (io/resource "crank/remap.mjs")]
     (when-not u
       (throw (ex-info "crank/remap.mjs not found on the classpath"
                       {:crank/error :config})))
-    (if (= "file" (.getProtocol u))
-      (.getPath u)
-      (let [tmp (java.io.File/createTempFile "crank-remap" ".mjs")]
-        (.deleteOnExit tmp)
-        (with-open [in (io/input-stream u)] (io/copy in tmp))
-        (.getPath tmp)))))
+    (str (io/file u))))
 
 (defn- coverage-files [dir]
   (let [f (io/file dir)]
@@ -62,7 +57,8 @@
       (let [lines (str/split-lines (str/trim out))
             parsed (map #(json/read-str % :key-fn keyword) lines)
             summary (some :summary parsed)
-            records (into [] (remove :summary) parsed)]
+            records (into [] (remove :summary) parsed)
+            versions (some :versions parsed)]
         (when (empty? records)
           (throw (ex-info (str "zero V8 blocks remapped into the configured source roots - "
                                "wrong build, stale maps, or an :include-glob that matches nothing")
@@ -73,4 +69,5 @@
          :records (mapv (fn [{:keys [file line hits]}]
                           {:file file :line line :hits hits})
                         records)
-         :counters summary}))))
+         :counters summary
+         :versions {:node (:node versions) :trace-mapping (:traceMapping versions)}}))))
