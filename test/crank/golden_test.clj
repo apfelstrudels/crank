@@ -50,10 +50,11 @@
         (is (= records (+ attributed (:outside-gate skipped) (:inter-defn skipped))))))
     (testing "join invariants: cov in [0,1]; every CC entry scored, N/A, or counted out"
       (is (every? #(<= 0.0 (:cov %) 1.0) rows))
-      (let [{:keys [cc-entries cc-skipped non-function-units]} fidelity]
+      (let [{:keys [cc-entries cc-skipped non-function-units lane-mismatched-defns]} fidelity]
         (is (= {:non-defn-unit 55} cc-skipped))
         (is (= cc-entries
                (+ (count rows) (count na-rows) (or non-function-units 0)
+                  (or lane-mismatched-defns 0)
                   (reduce + 0 (vals cc-skipped)))))))))
 
 ;; ---- schairs (JVM, :cloverage-lcov) - constructed inputs, hand-computed table ---------

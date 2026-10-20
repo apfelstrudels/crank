@@ -17,10 +17,20 @@
       (throw (ex-info (str "kondo reported a file outside the configured :paths: " filename)
                       {:crank/error :config :file filename :paths source-roots}))))
 
+(defn- var-langs
+  "Languages a var-definition lives in: kondo reports :lang on .cljc entries
+   (one report per language); single-language files by extension."
+  [{:keys [filename lang]}]
+  (cond lang #{(keyword lang)}
+        (str/ends-with? filename ".cljs") #{:cljs}
+        (str/ends-with? filename ".cljc") #{:clj :cljs}
+        :else #{:clj}))
+
 (defn parse-extents
   "Parse clj-kondo analysis JSON into extents:
-   {:file :name :ns :row :end-row :fn?} - :file relative to a configured source root.
-   A .cljc defn is reported once per language; it is one extent."
+   {:file :name :ns :row :end-row :fn? :langs} - :file relative to a configured
+   source root. A .cljc defn is reported once per language; it is one extent
+   whose :langs is the union. defmacro is a gated function unit like defn."
   [json-text source-roots]
   (let [analysis (:analysis (json/read-str json-text :key-fn keyword))]
     (->> (:var-definitions analysis)
@@ -30,9 +40,15 @@
                  :ns (str (:ns v))
                  :row (:row v)
                  :end-row (:end-row v)
+                 :langs (var-langs v)
                  :fn? (boolean (some #(str/ends-with? (str (:defined-by v)) %)
-                                     ["/defn" "/defn-" "/defmulti"]))}))
-         (reduce (fn [m e] (assoc m ((juxt :file :ns :name :row) e) e)) {})
+                                     ["/defn" "/defn-" "/defmulti" "/defmacro"]))}))
+         (reduce (fn [m e]
+                   (let [k ((juxt :file :ns :name :row) e)]
+                     (assoc m k (if-let [prev (get m k)]
+                                  (update prev :langs into (:langs e))
+                                  e))))
+                 {})
          vals
          (sort-by (juxt :file :row)))))
 

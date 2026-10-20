@@ -11,8 +11,8 @@
 (deftest cljc-defn-is-one-extent
   (let [json-text (json/write-str {:analysis {:var-definitions [(var-def "clj") (var-def "cljs")]}})
         extents (kondo/parse-extents json-text ["src"])]
-    (testing "a .cljc defn reported per language yields a single extent"
-      (is (= [{:file "a/shared.cljc" :name "parse" :ns "a.shared" :row 3 :end-row 9 :fn? true}]
+    (testing "a .cljc defn reported per language yields a single extent with the union of languages"
+      (is (= [{:file "a/shared.cljc" :name "parse" :ns "a.shared" :row 3 :end-row 9 :fn? true :langs #{:clj :cljs}}]
              extents)))
     (testing "sift and crapper entries for it match instead of being ambiguous"
       (doseq [cc-entry [{:name "parse" :file "a/shared.cljc" :line 3 :cc 4}

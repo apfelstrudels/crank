@@ -1,6 +1,7 @@
 (ns crank.honesty-test
   "One test per honest-by-construction rule (design spec §7)."
-  (:require [clojure.string :as str]
+  (:require [clojure.data.json :as json]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [crank.core :as core]
             [crank.cov.lcov :as lcov]
@@ -148,6 +149,66 @@
    "  (letfn [(g [y] (if y 1 2))]"
    "    (let [h (fn named [z] (when z z))]"
    "      (map #(inc %) [(g x) (h x) (reify P (m [_] 2))]))))"])
+
+(deftest rule-4-defmacro-is-gated
+  (testing "a defmacro is a function unit: matched, scored, and gated - never silently excluded"
+    (let [json-text (json/write-str {:analysis {:var-definitions [{:filename "src/a/core.clj"
+                                                                   :ns "a.core" :name "defthing"
+                                                                   :row 1 :end-row 8
+                                                                   :defined-by "clojure.core/defmacro"}]}})
+          extents (crank.kondo/parse-extents json-text ["src"])
+          res (core/join {:cc-entries [{:name "defthing" :file "a/core.clj" :line 1 :cc 8}]
+                          :extents extents
+                          :records [{:file "a/core.clj" :line 2 :hits 0}]
+                          :metric :line-coverage :na []})]
+      (is (:fn? (first extents)))
+      (is (= ["defthing"] (map :name (:rows res))))
+      (testing "at cov 0 it breaches the gate like any other defn (CRAP 8^2+8 = 72 > 30)"
+        (is (= :fail (core/band (:crap (first (:rows res))) {:fail 30 :warn 10})))))))
+
+(deftest rule-2-lane-mismatched-defns-are-excluded-and-counted
+  (let [shared {:file "a/shared.cljc" :name "shared" :ns "a.shared" :row 8 :end-row 12
+                :fn? true :langs #{:clj :cljs}}
+        shared-cc {:name "shared" :file "a/shared.cljc" :line 8 :cc 2}
+        records [{:file "a/shared.cljc" :line 9 :hits 1}]]
+    (testing "a clj-only defn in the CLJS lane (v8-shadow) is never scored at a fabricated 0%"
+      (let [res (core/join {:cc-entries [{:name "server-only" :file "a/shared.cljc" :line 1 :cc 9}
+                                         shared-cc]
+                            :extents [{:file "a/shared.cljc" :name "server-only" :ns "a.shared"
+                                       :row 1 :end-row 6 :fn? true :langs #{:clj}}
+                                      shared]
+                            :records records
+                            :metric :block-coverage :na []})]
+        (is (= ["shared"] (map :name (:rows res))))
+        (testing "it is counted under its own named skip reason, and the count is printed"
+          (is (= 1 (get-in res [:fidelity :lane-mismatched-defns])))
+          (is (str/includes? (core/fidelity-report res) "1 lane-mismatched defns excluded")))))
+    (testing "a cljs-only defn in the JVM lane (cloverage-lcov) is excluded the same way"
+      (let [res (core/join {:cc-entries [{:name "ui-only" :file "a/ui.cljs" :line 1 :cc 9}
+                                         shared-cc]
+                            :extents [{:file "a/ui.cljs" :name "ui-only" :ns "a.ui"
+                                       :row 1 :end-row 6 :fn? true :langs #{:cljs}}
+                                      shared]
+                            :records records
+                            :metric :line-coverage :na []})]
+        (is (= ["shared"] (map :name (:rows res))))
+        (is (= 1 (get-in res [:fidelity :lane-mismatched-defns])))))))
+
+(deftest rule-4-nested-defn-records-attribute-to-the-scored-outer-defn
+  (let [res (core/join {:cc-entries [{:name "outer" :file "a.clj" :line 1 :cc 4}
+                                     {:name "inner" :file "a.clj" :line 3 :cc 2 :skip :non-defn-unit}]
+                        :extents [{:file "a.clj" :name "outer" :ns "a" :row 1 :end-row 10 :fn? true}
+                                  {:file "a.clj" :name "inner" :ns "a" :row 3 :end-row 5 :fn? true}]
+                        :records [{:file "a.clj" :line 2 :hits 1}
+                                  {:file "a.clj" :line 4 :hits 1}]
+                        :metric :line-coverage :na []})
+        outer (first (:rows res))]
+    (testing "records on the nested defn's lines count toward the enclosing scored defn"
+      (is (= ["outer"] (map :name (:rows res))))
+      (is (= 2 (:units outer)))
+      (is (= 2 (:covered outer))))
+    (testing "the skipped nested defn is counted, never a row"
+      (is (= {:non-defn-unit 1} (get-in res [:fidelity :cc-skipped]))))))
 
 (deftest rule-4-sift-non-defn-units-are-counted-not-matched
   (let [dir (doto (File/createTempFile "crank-sift" "") (.delete) (.mkdirs))
