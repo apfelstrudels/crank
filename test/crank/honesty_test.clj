@@ -96,7 +96,7 @@
     (collect [_ _]
       {:metric :line-coverage
        :records [{:file "a.clj" :line 2 :hits 0}]
-       :counters {:unmapped 38}
+       :counters {:throughput {:records 1} :skipped {:unmapped 38}}
        :versions {:node "v22.0.0" :trace-mapping "0.3.31"}})))
 
 (defn- fake-cc-source []
@@ -150,4 +150,4 @@
         (testing "rule 5: CC tool + pin, adapter, clj-kondo, node and trace-mapping versions"
           (is (str/includes? out "inputs: cc crapper test, adapter cloverage-lcov, clj-kondo v2025.10.23, node v22.0.0, trace-mapping 0.3.31")))
         (testing "rule 4: adapter-side skips (unmapped) are printed, not only recorded"
-          (is (str/includes? out "unmapped 38")))))))
+          (is (str/includes? out "adapter throughput: records 1; skipped before the join: unmapped 38")))))))

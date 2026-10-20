@@ -194,8 +194,9 @@
   (let [{:keys [records attributed skipped cc-entries cc-matched
                 non-function-units zero-record-defns adapter]} fidelity]
     (str/join "\n"
-              [(str "fidelity: adapter counters (skipped before the join): "
-                    (str/join ", " (map (fn [[k v]] (str (name k) " " v)) (sort-by key adapter))))
+              [(let [kvs #(str/join ", " (map (fn [[k v]] (str (name k) " " v)) (sort-by key %)))]
+                 (str "fidelity: adapter throughput: " (kvs (:throughput adapter))
+                      "; skipped before the join: " (kvs (:skipped adapter))))
                (fmt "fidelity: %d IR records (%s), %d attributed, %d skipped (outside-gate %d, inter-defn %d)"
                     records (name metric) attributed
                     (+ (:outside-gate skipped) (:inter-defn skipped))

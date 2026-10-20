@@ -46,7 +46,7 @@
     (testing "fidelity: remap counters and the attribution invariant"
       (let [{:keys [records attributed skipped]} fidelity]
         (is (= (get-in expected [:fidelity :records]) records))
-        (is (= (get-in expected [:fidelity :unmapped]) (:unmapped adapter-counters)))
+        (is (= (get-in expected [:fidelity :unmapped]) (get-in adapter-counters [:skipped :unmapped])))
         (is (= records (+ attributed (:outside-gate skipped) (:inter-defn skipped))))))
     (testing "join invariants: cov in [0,1]; every CC entry scored, N/A, or counted out"
       (is (every? #(<= 0.0 (:cov %) 1.0) rows))

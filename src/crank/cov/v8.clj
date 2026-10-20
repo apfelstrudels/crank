@@ -69,5 +69,6 @@
          :records (mapv (fn [{:keys [file line hits]}]
                           {:file file :line line :hits hits})
                         records)
-         :counters summary
+         :counters {:throughput (select-keys summary [:records :entries])
+                    :skipped (select-keys summary [:unmapped :mapMissing :outsideInclude])}
          :versions {:node (:node versions) :trace-mapping (:traceMapping versions)}}))))

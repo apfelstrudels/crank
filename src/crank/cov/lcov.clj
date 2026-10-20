@@ -61,6 +61,6 @@
                         {:crank/error :missing-coverage :path (:lcov coverage)})))
       {:metric :line-coverage
        :records records
-       :counters {:records (count records)
-                  :files (:files parsed)
-                  :fn-br-records-ignored (:ignored parsed)}})))
+       :counters {:throughput {:records (count records)
+                               :files (:files parsed)}
+                  :skipped {:fn-br-records-ignored (:ignored parsed)}}})))

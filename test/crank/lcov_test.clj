@@ -58,4 +58,4 @@
         (core/collect (lcov/->CloverageLcov) {:coverage {:lcov (str f)} :paths ["src/main"]})]
     (is (= :line-coverage metric))
     (is (= 1 (count records)))
-    (is (= 1 (:records counters)))))
+    (is (= 1 (get-in counters [:throughput :records])))))
