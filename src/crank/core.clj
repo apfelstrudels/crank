@@ -4,9 +4,10 @@
 
    IR hit records: {:file :line :hits} - one per instrumentation unit (LCOV:
    per DA line; v8-shadow: per V8 block, block-start attribution). Extents:
-   {:file :name :ns :row :end-row :fn?} from clj-kondo. CC entries: sift
+   {:file :name :ns :row :end-row :fn? :langs} from clj-kondo. CC entries: sift
    {:name :file :line :cc} or crapper {:name :ns :cc}; an entry marked
-   {:skip reason} is a CC unit that is not a defn, counted and never matched."
+   {:skip reason} is a CC unit excluded from the match (a non-defn unit, or a
+   discarded cross-lane duplicate), counted and never matched."
   (:require [clojure.string :as str]))
 
 (defprotocol CoverageAdapter
@@ -97,15 +98,15 @@
 
    Honesty rules enforced here (design spec §7):
    1. coverage that reaches zero gated extents (wrong build) is a hard error;
-   2. zero records in a loaded file is a true 0%, not N/A;
+   2. zero records in a loaded file is a true 0%, not N/A; a defn the
+      coverage lane never compiles (e.g. clj-only in the v8-shadow lane) is
+      excluded from the gate and counted, never scored at a fabricated 0% -
+      same honesty status as a test-ns block;
    3. no coverage path (file produced no records) requires a declared :na
       with a written reason, else a hard error; a declared :na always yields
       N/A rows (loaded file or not), and N/A never enters the gate;
    4. a named defn failing the CC<->extent match is a hard error, and the
-      matched/unmatched counts and the per-reason CC skips are reported;
-   5. a defn the coverage lane never compiles (e.g. clj-only in the v8-shadow
-      lane) is excluded from the gate and counted, never scored at a
-      fabricated 0% - same honesty status as a test-ns block."
+      matched/unmatched counts and the per-reason CC skips are reported."
   [{:keys [cc-entries extents records metric na]}]
   (let [extents (vec (sort-by (juxt :file :row) extents))
         extents-by-file (group-by :file extents)

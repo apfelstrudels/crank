@@ -1,6 +1,6 @@
 (ns crank.kondo
   "clj-kondo --analysis: defn extents (file, row..end-row per var-definition).
-   Stack-neutral: clj-kondo parses both .clj and .cljs."
+   Stack-neutral: clj-kondo parses .clj, .cljs and .cljc."
   (:require [clojure.data.json :as json]
             [clojure.java.shell :as sh]
             [clojure.string :as str]))

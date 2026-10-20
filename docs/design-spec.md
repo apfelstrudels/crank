@@ -90,8 +90,9 @@ defaults, and both adoption paths are spelled out step by step.
 
 1. **Config load** - `.crank.edn` + CLI overrides. Unknown keys are a hard error.
 2. **Extents** - run `clj-kondo --lint <paths> --config '{:output {:analysis true :format :json}}'`;
-   keep `:row`/`:end-row`/`:name`/`:ns` per var-definition. clj-kondo parses both `.clj` and
-   `.cljs`, so this stage is stack-neutral. (Evidence: feasibility §2.6 and Appendix A use
+   keep `:row`/`:end-row`/`:name`/`:ns` plus the var's languages and defining form per
+   var-definition (a `.cljc` defn is one extent whose languages are the union). clj-kondo
+   parses `.clj`, `.cljs` and `.cljc`, so this stage is stack-neutral. (Evidence: feasibility §2.6 and Appendix A use
    exactly this; 151 var-defs with `row`/`end-row` on moonlander.)
 3. **Complexity** - via the configured `ComplexitySource`; produces `{:name :ns :file :line :cc}`
    per defn. CC values are tool-relative; the pin is recorded in the report.
@@ -170,7 +171,12 @@ Implementations:
   other sift unit (`<fn>`, named inner fns, `letfn` bindings, `defmethod` bodies,
   `defrecord`/`deftype`/`reify`/`extend-*` methods) has no var-definition extent, so it is
   skipped by design, never fed to the match, and counted in the fidelity report as a
-  `non-defn-unit` skip.
+  `non-defn-unit` skip. sift reads reader conditionals with the features of the file
+  extension, so in the `:v8-shadow` lane each `.cljc` is additionally scored through a temp
+  `.cljs` copy (the pin is untouched - the workaround is invocation-only) and a cljs-only
+  defn is gated like any other. For a defn shared by both branches the lane-matched reading
+  is the CC of record; the discarded cross-lane reading is counted in the fidelity report
+  as a `deduped-cross-lane-unit` skip, never silently dropped.
 
 **Pinning is part of the contract:** the resolved tool and pin are printed in every report
 header. Absolute CC is tool-relative (crapper counts each `and`/`or` form once; sift counts
@@ -259,6 +265,9 @@ per-defn rows, fidelity counters) for CI artifacts and future trend tooling.
 2. **Zero blocks is not zero coverage.** A defn with attributed records all at `hits 0` is a
    true 0% (the file was loaded; the function was never called). A defn whose file produced
    **no** records was never loaded - that is "no coverage path" and falls under rule 3.
+   A defn the coverage lane never compiles (a clj-only `#?` branch in the `:v8-shadow` lane,
+   a cljs-only branch in the `:cloverage-lcov` lane) is excluded from the gate and counted
+   in the fidelity report - never scored at a fabricated 0%.
 3. **N/A requires a written justification in config.** `{:na [{:file "moonlander/render/pixi.cljs"
    :reason "browser-only shell; the pure scene.cljs it renders is tested at 100%"}]}`.
    An undeclared no-coverage-path defn => exit 1 listing it. N/A rows never enter the gate and
