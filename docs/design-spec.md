@@ -195,7 +195,7 @@ tool per repo, never compare absolute CC across tools, switching tools re-baseli
 
 - **Inputs:** one or more `NODE_V8_COVERAGE` output dirs (raw V8 JSON, one file per run), the
   shadow-cljs `cljs-runtime` dir holding the compiled `*.js` + `*.js.map`, and an include
-  regex selecting the project's runtime files (e.g. `#"moonlander[^/]*\.js$"`).
+  regex selecting the project's runtime files (e.g. `#"cljs-runtime/moonlander\.[^/]*\.js$"`).
 - **Remap helper:** `resources/crank/remap.mjs` (~90 lines, distilled from the validated
   Appendix A prototype) run via `node`. It maps each V8 block's **start offset** through the
   shadow source map with `@jridgewell/trace-mapping` (pinned; this is the exact library the
@@ -293,7 +293,7 @@ per-defn rows, fidelity counters) for CI artifacts and future trend tooling.
             ;; :v8-shadow:
             ;; :v8-dirs [".cov/sim" ".cov/render"]
             ;; :cljs-runtime ".shadow-cljs/builds"
-            ;; :include-glob #"moonlander[^/]*\.js$"
+            ;; :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"
             }
  :threshold {:fail 30 :warn 10}             ;; schairs sets {:fail 10 :warn 5}; see §10
  :na []                                     ;; {:file ... :reason ...} entries, rule 3
@@ -360,7 +360,7 @@ the join, the table, and the gate.
 2. `.crank.edn`: `:cc {:tool :sift :pin "8125fe8"}` (sift is the validated CC source on this
    codebase; crapper is the documented alternative), `:coverage {:adapter :v8-shadow
    :v8-dirs [".cov/sim" ".cov/render"] :cljs-runtime ".shadow-cljs/builds"
-   :include-glob #"moonlander[^/]*\.js$"}`, `:threshold {:fail 30 :warn 10}`, and the two
+   :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"}`, `:threshold {:fail 30 :warn 10}`, and the two
    `:na` entries (`pixi.cljs`, `boot.cljs`) with written reasons.
 3. New CI job (ubuntu-latest): `npm ci`; `npx shadow-cljs compile sim sim-render`;
    `NODE_V8_COVERAGE=.cov/sim node target/sim.js`;

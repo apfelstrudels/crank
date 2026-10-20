@@ -12,7 +12,7 @@
   {:coverage {:adapter :v8-shadow
               :v8-dirs [(str fixture "/coverage/sim") (str fixture "/coverage/render")]
               :cljs-runtime (str fixture "/cljs-runtime")
-              :include-glob #"moonlander[^/]*\.js$"}})
+              :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"}})
 
 (deftest collect-on-golden-fixture
   (testing "real remap through node + trace-mapping reproduces the pinned counters"
@@ -50,7 +50,7 @@
       (let [e (try (core/collect (v8/->V8Shadow)
                                {:coverage {:v8-dirs [(str dir)]
                                            :cljs-runtime (str fixture "/cljs-runtime")
-                                           :include-glob #"moonlander[^/]*\.js$"}})
+                                           :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"}})
                    nil
                    (catch clojure.lang.ExceptionInfo e (ex-data e)))]
         (is (= :unjoinable-coverage (:crank/error e)))))))

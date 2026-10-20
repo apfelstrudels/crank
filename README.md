@@ -45,7 +45,7 @@ suppressed; `--report-only` relaxes the gate, never the honesty rules.
             ;; :v8-shadow instead:
             ;; :v8-dirs [".cov/sim" ".cov/render"]
             ;; :cljs-runtime ".shadow-cljs/builds"
-            ;; :include-glob #"moonlander[^/]*\.js$"
+            ;; :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"
             }
  :threshold {:fail 30 :warn 10}
  :na []                                    ;; {:file ... :reason ...} entries

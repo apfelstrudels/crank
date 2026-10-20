@@ -3,7 +3,7 @@
  :coverage {:adapter :v8-shadow
             :v8-dirs ["coverage/sim" "coverage/render"]
             :cljs-runtime "cljs-runtime"
-            :include-glob #"moonlander[^/]*\.js$"}
+            :include-glob #"cljs-runtime/moonlander\.[^/]*\.js$"}
  :threshold {:fail 30 :warn 10}
  :na [{:file "moonlander/render/pixi.cljs"
        :reason "browser-only pixi shell; no Node coverage path. The pure scene mapping it renders (moonlander.render.scene) is exercised at 100% by the sim-render suite."}
