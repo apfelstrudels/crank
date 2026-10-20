@@ -5,7 +5,8 @@
    IR hit records: {:file :line :hits} - one per instrumentation unit (LCOV:
    per DA line; v8-shadow: per V8 block, block-start attribution). Extents:
    {:file :name :ns :row :end-row :fn?} from clj-kondo. CC entries: sift
-   {:name :file :line :cc} or crapper {:name :ns :cc}."
+   {:name :file :line :cc} or crapper {:name :ns :cc}; an entry marked
+   {:skip reason} is a CC unit that is not a defn, counted and never matched."
   (:require [clojure.string :as str]))
 
 (defprotocol CoverageAdapter
@@ -76,7 +77,7 @@
       with a written reason, else a hard error; a declared :na always yields
       N/A rows (loaded file or not), and N/A never enters the gate;
    4. a named defn failing the CC<->extent match is a hard error, and the
-      matched/unmatched counts are reported."
+      matched/unmatched counts and the per-reason CC skips are reported."
   [{:keys [cc-entries extents records metric na]}]
   (let [extents (vec (sort-by (juxt :file :row) extents))
         extents-by-file (group-by :file extents)
@@ -92,7 +93,9 @@
             (when-not (contains? extents-by-file file)
               (throw (ex-info (str ":na entry matches nothing in the extents: " file)
                               {:crank/error :config :na entry}))))
-        matched (map (fn [cc] {:cc cc :extent (match-extent extents cc)}) cc-entries)
+        cc-skipped (frequencies (keep :skip cc-entries))
+        matched (map (fn [cc] {:cc cc :extent (match-extent extents cc)})
+                     (remove :skip cc-entries))
         unmatched (into [] (comp (filter #(nil? (:extent %))) (map :cc)) matched)
         ambiguous (into [] (comp (filter #(= :ambiguous (:extent %))) (map :cc)) matched)
         _ (when (or (seq unmatched) (seq ambiguous))
@@ -148,7 +151,8 @@
                        :attributed attributed
                        :skipped (merge {:outside-gate 0 :inter-defn 0} skipped)
                        :cc-entries (count cc-entries)
-                       :cc-matched (count matched)}
+                       :cc-matched (count matched)
+                       :cc-skipped cc-skipped}
                       (:fidelity rows))}))
 
 ;; ---- report -------------------------------------------------------------------
@@ -191,18 +195,19 @@
                                 (map na-str na-rows)))))))
 
 (defn fidelity-report [{:keys [fidelity metric]}]
-  (let [{:keys [records attributed skipped cc-entries cc-matched
-                non-function-units zero-record-defns adapter]} fidelity]
+  (let [{:keys [records attributed skipped cc-entries cc-matched cc-skipped
+                non-function-units zero-record-defns adapter]} fidelity
+        kvs #(str/join ", " (map (fn [[k v]] (str (name k) " " v)) (sort-by key %)))]
     (str/join "\n"
-              [(let [kvs #(str/join ", " (map (fn [[k v]] (str (name k) " " v)) (sort-by key %)))]
-                 (str "fidelity: adapter throughput: " (kvs (:throughput adapter))
-                      "; skipped before the join: " (kvs (:skipped adapter))))
+              [(str "fidelity: adapter throughput: " (kvs (:throughput adapter))
+                    "; skipped before the join: " (kvs (:skipped adapter)))
                (fmt "fidelity: %d IR records (%s), %d attributed, %d skipped (outside-gate %d, inter-defn %d)"
                     records (name metric) attributed
                     (+ (:outside-gate skipped) (:inter-defn skipped))
                     (:outside-gate skipped) (:inter-defn skipped))
-               (fmt "fidelity: %d of %d CC entries matched to extents (an unmatched defn is exit 1); %d non-function units excluded; %d defns at true 0%% in loaded files"
-                    cc-matched cc-entries (or non-function-units 0) (or zero-record-defns 0))])))
+               (fmt "fidelity: %d of %d CC entries matched to extents (an unmatched defn is exit 1); CC entries skipped: %s; %d non-function units excluded; %d defns at true 0%% in loaded files"
+                    cc-matched cc-entries (if (seq cc-skipped) (kvs cc-skipped) "none")
+                    (or non-function-units 0) (or zero-record-defns 0))])))
 
 (def precision-notes
   {:block-coverage ["v8-shadow: block-start attribution wobbles +/-1 block at defn boundaries; blocks between defns are skipped by design"

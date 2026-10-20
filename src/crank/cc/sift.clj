@@ -1,16 +1,17 @@
 (ns crank.cc.sift
   "ComplexitySource :sift - in-process sift (pinned, see deps.edn) cyclomatic
-   complexity per defn. sift is asked for exactly one rule: a metric finding
-   per unit with cyclomatic >= 1, i.e. every top-level form it models. <fn>
-   anonymous units are skipped by design (they cannot be named in a gate)."
+   complexity per top-level defn. sift scores every function unit it models;
+   only top-level def-form units can be top-level defns. Every other unit -
+   <fn>, named inner fns, letfn bindings, defmethod bodies, and
+   defrecord/deftype/reify/extend-* methods - has no var-definition extent, so
+   it is excluded by design and counted as a :non-defn-unit skip, never fed to
+   the extent match."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [crank.core :as core]
-            [net.typemark.sift :as sift]))
+            [net.typemark.sift.complexity :as complexity]))
 
-(def crank-rule
-  {:rulesets #{}
-   :rules {:crank/cyclomatic-complexity {:extends :metric :measure :cyclomatic :max 0}}})
+(def non-defn-kinds #{"fn" "letfn" "defmethod" "method"})
 
 (defn- clj-file? [f] (re-find #"\.clj[csx]?$" (.getName (io/file f))))
 
@@ -33,28 +34,35 @@
       (throw (ex-info (str "sift reported a file outside the configured :paths: " file)
                       {:crank/error :config :file file :paths source-roots}))))
 
-(defn findings->cc-entries
-  "sift findings (data or EDN-parsed) -> [{:name :file :line :cc}], <fn> skipped.
+(defn units->cc-entries
+  "sift unit trees per file ([{:file :units}]) -> [{:name :file :line :cc}].
+   A top-level unit of a def-form kind is a defn candidate; every other unit
+   (nested children included) is an entry marked :skip :non-defn-unit.
    Paths are made relative to their source root so they meet the kondo extents
    and the coverage IR on the same normalized footing."
-  [findings source-roots]
+  [file-units source-roots]
   (into []
-        (keep (fn [{:keys [rule symbol file line cyclomatic]}]
-                (when (and (= :crank/cyclomatic-complexity rule)
-                           (not= "<fn>" (str symbol)))
-                  {:name (str symbol)
-                   :file (root-relative source-roots file)
-                   :line line
-                   :cc cyclomatic})))
-        findings))
+        (mapcat (fn [{:keys [file units]}]
+                  (let [file (root-relative source-roots file)
+                        entry (fn [{:keys [name line cyclomatic]}]
+                                {:name name :file file :line line :cc cyclomatic})]
+                    (mapcat (fn [{:keys [kind children] :as u}]
+                              (cons (cond-> (entry u)
+                                      (non-defn-kinds kind) (assoc :skip :non-defn-unit))
+                                    (map #(assoc (entry %) :skip :non-defn-unit)
+                                         (complexity/flatten-units children))))
+                            units))))
+        file-units))
+
+(defn- file-units [f]
+  (let [path (str f)
+        {:keys [ok? error functions]} (complexity/report (slurp f) path)]
+    (when-not ok?
+      (throw (ex-info (str "sift could not score " path ": " error)
+                      {:crank/error :cc-tool-failed :file path})))
+    {:file path :units functions}))
 
 (defrecord SiftSource []
   core/ComplexitySource
   (measure [_ {:keys [paths]}]
-    (let [linter (sift/linter crank-rule)
-          inputs (into []
-                       (comp (mapcat expand)
-                             (map (fn [f] {:path (str f) :text (slurp f)})))
-                       paths)
-          findings (:findings (sift/lint linter inputs))]
-      (findings->cc-entries findings paths))))
+    (units->cc-entries (map file-units (mapcat expand paths)) paths)))

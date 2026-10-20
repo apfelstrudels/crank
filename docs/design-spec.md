@@ -150,7 +150,7 @@ A future `:v8-ts` adapter (supabase lane, if it ever needs honest per-function n
 
 ```clojure
 (defprotocol ComplexitySource
-  (measure [this cfg]))  ;; => seq of {:name :ns :file :line :cc}
+  (measure [this cfg]))  ;; => seq of {:name :ns :file :line :cc}, optionally {:skip reason}
 ```
 
 Implementations:
@@ -166,7 +166,11 @@ Implementations:
 - **`:sift` (alternative).** sift v0.2.0 pinned at sha `8125fe8`, consumed as a Clojure git
   dep and invoked in-process (it is a Clojure library; CLI form `sift lint --no-kondo --edn`
   validated in feasibility §2.6). Emits `:line`, so its extent join is the prototype's exact
-  `(file, name, line±2)` match. `<fn>` anonymous entries are skipped by design.
+  `(file, name, line±2)` match. Only top-level def-form units are defn candidates; every
+  other sift unit (`<fn>`, named inner fns, `letfn` bindings, `defmethod` bodies,
+  `defrecord`/`deftype`/`reify`/`extend-*` methods) has no var-definition extent, so it is
+  skipped by design, never fed to the match, and counted in the fidelity report as a
+  `non-defn-unit` skip.
 
 **Pinning is part of the contract:** the resolved tool and pin are printed in every report
 header. Absolute CC is tool-relative (crapper counts each `and`/`or` form once; sift counts
@@ -398,7 +402,7 @@ against the ~440-line tool.
 4. **Parser unit tests (synthetic fixtures):** LCOV (multi-`SF`, out-of-order `DA`, `BRDA`
    ignored, empty file => error); crapper EDN (nil coverage keys tolerated, missing line
    numbers handled via the ns+name join, duplicate-name ambiguity => loud error); sift EDN
-   (`<fn>` skipped, line±2 extent match); kondo analysis JSON.
+   (non-defn units skipped and counted, line±2 extent match); kondo analysis JSON.
 5. **Honesty tests (the rules in §7, each with a test):** missing lcov => exit 1; empty v8
    dir => exit 1; coverage that remaps into zero configured source files (wrong build) =>
    exit 1; never-called defn (records at hits 0) => cov 0.0 scored, **not** N/A; never-loaded

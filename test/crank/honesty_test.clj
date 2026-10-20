@@ -126,6 +126,49 @@
       (testing "missing coverage stays exit 1 under --report-only"
         (is (= 1 (main/exit-code ["--config" (str cfg-file) "--report-only"])))))))
 
+(def sift-source
+  ["(ns a)"
+   "(defmulti area :shape)"
+   "(defmethod area :circle [s] (* 3 (:r s)))"
+   "(defprotocol P (m [x]))"
+   "(defrecord Foo [] P (m [_] 1))"
+   "(extend-protocol P String (m [s] (count s)))"
+   "(defn f [x]"
+   "  (letfn [(g [y] (if y 1 2))]"
+   "    (let [h (fn named [z] (when z z))]"
+   "      (map #(inc %) [(g x) (h x) (reify P (m [_] 2))]))))"])
+
+(deftest rule-4-sift-non-defn-units-are-counted-not-matched
+  (let [dir (doto (File/createTempFile "crank-sift" "") (.delete) (.mkdirs))
+        _ (spit (File. dir "a.clj") (str/join "\n" sift-source))
+        cfg-file (temp-config
+                  (pr-str {:paths [(str dir)]
+                           :cc {:tool :sift :pin "8125fe8"}
+                           :coverage {:adapter :cloverage-lcov :lcov "fake.info"}
+                           :na []}))
+        area {:file "a.clj" :name "area" :ns "a" :row 2 :end-row 2 :fn? true}
+        f {:file "a.clj" :name "f" :ns "a" :row 7 :end-row 10 :fn? true}
+        run (fn [extents]
+              (with-redefs [crank.kondo/extents (fn [_] extents)
+                            crank.kondo/version (constantly "v2025.10.23")
+                            crank.main/coverage-adapters {:cloverage-lcov (fake-adapter :breach)}]
+                (let [err (java.io.StringWriter.)
+                      exit (volatile! nil)
+                      out (with-out-str
+                            (binding [*err* err]
+                              (vreset! exit (main/exit-code ["--config" (str cfg-file) "--check"]))))]
+                  {:exit @exit :out out :err (str err)})))]
+    (testing "defmethod, record/protocol/reify methods, letfn and inner fns are skipped and counted, not exit 1"
+      (let [{:keys [exit out]} (run [area f])]
+        (is (= 0 exit))
+        (is (str/includes? out "2 of 9 CC entries matched to extents"))
+        (is (str/includes? out "CC entries skipped: non-defn-unit 7"))))
+    (testing "a top-level defn failing the CC<->extent match is still exit 1"
+      (let [{:keys [exit err]} (run [area])]
+        (is (= 1 exit))
+        (is (str/includes? err "named defns failed the CC<->extent match"))
+        (is (str/includes? err ": f"))))))
+
 (deftest unknown-config-key-is-a-hard-error
   (let [cfg-file (temp-config
                   (pr-str {:paths ["src/main"]

@@ -79,9 +79,11 @@ builds - missing coverage is a loud precondition failure, not 0%.
   re-baselines the gate.
 - shadow-cljs upgrades can shift codegen and therefore coverage anchors;
   re-validate after any bump.
-- sift models top-level `def` forms as units; matched to a non-function
-  kondo extent they are excluded from scoring and counted in the fidelity
-  report. A defn in a loaded file with no attributed blocks is a true 0%
+- sift scores every function unit; only top-level `def` forms are defn
+  candidates. `<fn>`, named inner fns, `letfn` bindings, `defmethod` bodies
+  and record/type/reify/extend methods are skipped as `non-defn-unit` and
+  counted in the fidelity report. A top-level `def` form matched to a
+  non-function kondo extent is excluded from scoring and counted too. A defn in a loaded file with no attributed blocks is a true 0%
   (uncalled or compiled away), never N/A. N/A only ever comes from a
   config `:na` entry with a written reason.
 

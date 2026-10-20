@@ -21,7 +21,7 @@
                              (assoc :v8-dirs [(str ml "/coverage/sim") (str ml "/coverage/render")]
                                     :cljs-runtime (str ml "/cljs-runtime"))))
         extents (kondo/parse-extents (slurp (str ml "/kondo-analysis.json")) ["src/main"])
-        cc (sift/findings->cc-entries (edn/read-string (slurp (str ml "/sift.edn"))) ["../moonlander/src/main"])
+        cc (sift/units->cc-entries (edn/read-string (slurp (str ml "/sift-units.edn"))) ["../moonlander/src/main"])
         {:keys [metric records counters]} (core/collect (v8/->V8Shadow) cov-cfg)]
     (assoc (core/join {:cc-entries cc :extents extents :records records
                        :metric metric :na (:na cfg)})
@@ -50,9 +50,11 @@
         (is (= records (+ attributed (:outside-gate skipped) (:inter-defn skipped))))))
     (testing "join invariants: cov in [0,1]; every CC entry scored, N/A, or counted out"
       (is (every? #(<= 0.0 (:cov %) 1.0) rows))
-      (let [{:keys [cc-entries non-function-units]} fidelity]
+      (let [{:keys [cc-entries cc-skipped non-function-units]} fidelity]
+        (is (= {:non-defn-unit 55} cc-skipped))
         (is (= cc-entries
-               (+ (count rows) (count na-rows) (or non-function-units 0))))))))
+               (+ (count rows) (count na-rows) (or non-function-units 0)
+                  (reduce + 0 (vals cc-skipped)))))))))
 
 ;; ---- schairs (JVM, :cloverage-lcov) - constructed inputs, hand-computed table ---------
 
