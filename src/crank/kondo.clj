@@ -28,9 +28,11 @@
 
 (defn parse-extents
   "Parse clj-kondo analysis JSON into extents:
-   {:file :name :ns :row :end-row :fn? :langs} - :file relative to a configured
-   source root. A .cljc defn is reported once per language; it is one extent
-   whose :langs is the union. defmacro is a gated function unit like defn."
+   {:file :name :ns :row :end-row :fn? :declared? :langs} - :file relative to
+   a configured source root. A .cljc defn is reported once per language; it is
+   one extent whose :langs is the union. defmacro is a gated function unit like
+   defn. A (declare x) also yields a var-definition extent, marked :declared? -
+   it is a forward declaration, not a definition."
   [json-text source-roots]
   (let [analysis (:analysis (json/read-str json-text :key-fn keyword))]
     (->> (:var-definitions analysis)
@@ -41,6 +43,8 @@
                  :row (:row v)
                  :end-row (:end-row v)
                  :langs (var-langs v)
+                 :declared? (boolean (or (:declare v)
+                                         (str/ends-with? (str (:defined-by v)) "/declare")))
                  :fn? (boolean (some #(str/ends-with? (str (:defined-by v)) %)
                                      ["/defn" "/defn-" "/defmulti" "/defmacro"]))}))
          (reduce (fn [m e]

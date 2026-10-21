@@ -26,12 +26,17 @@
 
 (defn- match-extent
   "sift join: (file, name, line exact else line±2). crapper join: (ns, name).
-   Returns the extent, :ambiguous, or nil."
+   Returns the extent, :ambiguous, or nil. A (declare x) extent is a forward
+   declaration, not a definition: when a real definition of the same var
+   exists, the declare extent drops out of the candidates instead of making
+   the match ambiguous. Two real definitions stay a loud :ambiguous."
   [extent-index cc-entry]
   (let [{:keys [name ns file line]} cc-entry
         candidates (if (and file line)
                      (filter #(and (= file (:file %)) (= name (:name %))) extent-index)
-                     (filter #(and (= ns (:ns %)) (= name (:name %))) extent-index))]
+                     (filter #(and (= ns (:ns %)) (= name (:name %))) extent-index))
+        candidates (let [definitions (remove :declared? candidates)]
+                     (if (seq definitions) definitions candidates))]
     (cond
       (empty? candidates) nil
       (and file line)
