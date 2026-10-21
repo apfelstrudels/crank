@@ -43,8 +43,7 @@
                  :row (:row v)
                  :end-row (:end-row v)
                  :langs (var-langs v)
-                 :declared? (boolean (or (:declare v)
-                                         (str/ends-with? (str (:defined-by v)) "/declare")))
+                 :declared? (str/ends-with? (str (:defined-by v)) "/declare")
                  :fn? (boolean (some #(str/ends-with? (str (:defined-by v)) %)
                                      ["/defn" "/defn-" "/defmulti" "/defmacro"]))}))
          (reduce (fn [m e]
