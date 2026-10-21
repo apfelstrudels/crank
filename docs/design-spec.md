@@ -158,7 +158,7 @@ Implementations:
 
 - **`:crapper` (primary).** Shells out to `python -m crapper --no-coverage <paths>` with
   crapper installed from the pinned git commit `9f1bead` (pip git URL). Parses its
-  `.metrics/crap.edn` (`{:name :namespace :complexity :coverage nil :crap nil}` entries).
+  `.metrics/crap.edn` (a map `{:entries [...]}` of `{:name :namespace :complexity :coverage nil :crap nil}` entries).
   Evidence it works on both stacks: feasibility §2.1 ran it on moonlander's `.cljs` (124 fns);
   schairs CI runs the same counter today. Known gap: crapper's EDN has **no line numbers**,
   so the join to extents is by `(ns, name)` against kondo's `(name, ns, row, end-row)` -

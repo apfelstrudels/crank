@@ -57,7 +57,7 @@
                   (or lane-mismatched-defns 0)
                   (reduce + 0 (vals cc-skipped)))))))))
 
-;; ---- schairs (JVM, :cloverage-lcov) - constructed inputs, hand-computed table ---------
+;; ---- schairs (JVM, :cloverage-lcov) - real crapper capture, constructed lcov/kondo ----
 
 (def sc "test/fixtures/schairs-jvm")
 

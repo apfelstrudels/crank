@@ -16,19 +16,27 @@
 (def metrics-file ".metrics/crap.edn")
 
 (defn parse-crapper-edn
-  "Parse crapper's .metrics/crap.edn -> [{:name :ns :cc}]. :coverage/:crap are
-   always nil in --no-coverage mode and are tolerated, never read."
+  "Parse crapper's .metrics/crap.edn -> [{:name :ns :cc}]. The real file is a
+   map {:entries [...]} of {:name :namespace :complexity :coverage :crap}
+   entries; :coverage/:crap are always nil in --no-coverage mode and are
+   tolerated, never read. Anything that is not that shape - a bare vector, a
+   map without an :entries vector, an entry with no name/namespace/numeric
+   complexity - is a loud error, never a guess."
   [edn-text]
-  (let [entries (edn/read-string edn-text)]
-    (when-not (sequential? entries)
-      (throw (ex-info "crapper metrics are not a vector of entries"
+  (let [metrics (edn/read-string edn-text)]
+    (when-not (map? metrics)
+      (throw (ex-info "crapper metrics are not the expected {:entries [...]} map"
                       {:crank/error :cc-tool-failed})))
-    (mapv (fn [{:keys [name namespace complexity]}]
-            (when-not (and name namespace (number? complexity))
-              (throw (ex-info (str "malformed crapper entry: " (pr-str name))
-                              {:crank/error :cc-tool-failed})))
-            {:name (str name) :ns (str namespace) :cc complexity})
-          entries)))
+    (let [entries (:entries metrics)]
+      (when-not (sequential? entries)
+        (throw (ex-info "crapper metrics map carries no :entries vector"
+                        {:crank/error :cc-tool-failed})))
+      (mapv (fn [{:keys [name namespace complexity]}]
+              (when-not (and name namespace (number? complexity))
+                (throw (ex-info (str "malformed crapper entry: " (pr-str name))
+                                {:crank/error :cc-tool-failed})))
+              {:name (str name) :ns (str namespace) :cc complexity})
+            entries))))
 
 (defrecord CrapperSource []
   core/ComplexitySource
