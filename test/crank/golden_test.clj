@@ -57,7 +57,7 @@
                   (or lane-mismatched-defns 0)
                   (reduce + 0 (vals cc-skipped)))))))))
 
-;; ---- schairs (JVM, :cloverage-lcov) - constructed inputs, hand-computed table ---------
+;; ---- schairs (JVM, :cloverage-lcov) - real crapper/kondo/cloverage captures ----
 
 (def sc "test/fixtures/schairs-jvm")
 
@@ -85,6 +85,7 @@
       (let [threshold {:fail 30 :warn 10}]
         (is (= :fail (core/band (:crap (first rows)) threshold)))
         (is (= :warn (core/band (:crap (second rows)) threshold)))))
-    (testing "all records attributed inside defn extents"
-      (is (= 19 (get fidelity :records)))
-      (is (= 19 (get fidelity :attributed))))))
+    (testing "records attributed inside defn extents, inter-defn skips counted"
+      (is (= 31 (get fidelity :records)))
+      (is (= 28 (get fidelity :attributed)))
+      (is (= 3 (get-in fidelity [:skipped :inter-defn]))))))

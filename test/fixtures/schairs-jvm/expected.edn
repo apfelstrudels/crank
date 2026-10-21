@@ -1,10 +1,10 @@
 {:schema "crank.expected/v1"
- :provenance "CONSTRUCTED, not captured - see README.md. Expected CRAP values hand-computed with the spec formula CRAP = CC^2 * (1-cov)^3 + CC."
+ :provenance "CAPTURED - see README.md. Every input describes one revision of the checked-in src/ tree: CC values from a real crapper 9f1bead capture (crapper.edn), defn extents from a real clj-kondo 2025.10.23 analysis (kondo-analysis.json), line coverage from a real Cloverage 1.2.4 run of the checked-in coverage check (lcov.info). Expected CRAP values hand-computed with the spec formula CRAP = CC^2 * (1-cov)^3 + CC."
  :metric :line-coverage
  :anchors
- [{:name "-main" :ns "schairs-user-service.core" :file "schairs_user_service/core.clj" :cc 6 :lines 7 :covered 0 :cov 0.0 :crap 42.00 :band :fail}
-  {:name "delete-user!" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 3 :lines 3 :covered 0 :cov 0.0 :crap 12.00 :band :warn}
-  {:name "create-user" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 4 :lines 6 :covered 5 :cov 0.8333 :crap 4.07 :band :ok}
-  {:name "find-user" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 2 :lines 2 :covered 2 :cov 1.0 :crap 2.00 :band :ok}
-  {:name "parse-port" :ns "schairs-user-service.core" :file "schairs_user_service/core.clj" :cc 2 :lines 1 :covered 1 :cov 1.0 :crap 2.00 :band :ok}]
+ [{:name "-main" :ns "schairs-user-service.core" :file "schairs_user_service/core.clj" :cc 6 :lines 9 :covered 1 :cov 0.1111 :crap 31.28 :band :fail}
+  {:name "delete-user!" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 4 :lines 6 :covered 1 :cov 0.1667 :crap 13.26 :band :warn}
+  {:name "create-user" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 4 :lines 6 :covered 4 :cov 0.6667 :crap 4.59 :band :ok}
+  {:name "parse-port" :ns "schairs-user-service.core" :file "schairs_user_service/core.clj" :cc 2 :lines 3 :covered 3 :cov 1.0 :crap 2.00 :band :ok}
+  {:name "find-user" :ns "schairs-user-service.users" :file "schairs_user_service/users.clj" :cc 2 :lines 4 :covered 4 :cov 1.0 :crap 2.00 :band :ok}]
  :gate {:threshold 30 :breach? true :breaching ["-main"]}}
