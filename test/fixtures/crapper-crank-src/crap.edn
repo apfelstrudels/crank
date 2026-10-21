@@ -1,15 +1,16 @@
 {:entries [
   {:name "validate-config", :namespace "crank.main", :complexity 16, :coverage nil, :crap nil}
+  {:name "join", :namespace "crank.core", :complexity 15, :coverage nil, :crap nil}
   {:name "match-extent", :namespace "crank.core", :complexity 15, :coverage nil, :crap nil}
   {:name "parse-args", :namespace "crank.main", :complexity 15, :coverage nil, :crap nil}
-  {:name "join", :namespace "crank.core", :complexity 14, :coverage nil, :crap nil}
   {:name "run", :namespace "crank.main", :complexity 9, :coverage nil, :crap nil}
   {:name "parse-lcov", :namespace "crank.cov.lcov", :complexity 8, :coverage nil, :crap nil}
+  {:name "attribute", :namespace "crank.core", :complexity 7, :coverage nil, :crap nil}
   {:name "expand", :namespace "crank.cc.sift", :complexity 6, :coverage nil, :crap nil}
-  {:name "attribute", :namespace "crank.core", :complexity 5, :coverage nil, :crap nil}
-  {:name "parse-crapper-edn", :namespace "crank.cc.crapper", :complexity 4, :coverage nil, :crap nil}
+  {:name "fidelity-report", :namespace "crank.core", :complexity 6, :coverage nil, :crap nil}
+  {:name "parse-crapper-edn", :namespace "crank.cc.crapper", :complexity 5, :coverage nil, :crap nil}
+  {:name "var-langs", :namespace "crank.kondo", :complexity 5, :coverage nil, :crap nil}
   {:name "band", :namespace "crank.core", :complexity 4, :coverage nil, :crap nil}
-  {:name "fidelity-report", :namespace "crank.core", :complexity 4, :coverage nil, :crap nil}
   {:name "table", :namespace "crank.core", :complexity 4, :coverage nil, :crap nil}
   {:name "exit-code", :namespace "crank.main", :complexity 4, :coverage nil, :crap nil}
   {:name "root-relative", :namespace "crank.cc.sift", :complexity 3, :coverage nil, :crap nil}
@@ -18,17 +19,20 @@
   {:name "root-relative", :namespace "crank.kondo", :complexity 3, :coverage nil, :crap nil}
   {:name "file-units", :namespace "crank.cc.sift", :complexity 2, :coverage nil, :crap nil}
   {:name "units->cc-entries", :namespace "crank.cc.sift", :complexity 2, :coverage nil, :crap nil}
+  {:name "lane-mismatched?", :namespace "crank.core", :complexity 2, :coverage nil, :crap nil}
   {:name "coverage-files", :namespace "crank.cov.v8", :complexity 2, :coverage nil, :crap nil}
   {:name "remap-script", :namespace "crank.cov.v8", :complexity 2, :coverage nil, :crap nil}
+  {:name "parse-extents", :namespace "crank.kondo", :complexity 2, :coverage nil, :crap nil}
   {:name "version", :namespace "crank.kondo", :complexity 2, :coverage nil, :crap nil}
   {:name "load-config", :namespace "crank.main", :complexity 2, :coverage nil, :crap nil}
   {:name "clj-file?", :namespace "crank.cc.sift", :complexity 1, :coverage nil, :crap nil}
+  {:name "cljc-file?", :namespace "crank.cc.sift", :complexity 1, :coverage nil, :crap nil}
+  {:name "cljs-feature-copy", :namespace "crank.cc.sift", :complexity 1, :coverage nil, :crap nil}
   {:name "crap", :namespace "crank.core", :complexity 1, :coverage nil, :crap nil}
   {:name "edn-report", :namespace "crank.core", :complexity 1, :coverage nil, :crap nil}
   {:name "fmt", :namespace "crank.core", :complexity 1, :coverage nil, :crap nil}
   {:name "pct", :namespace "crank.core", :complexity 1, :coverage nil, :crap nil}
   {:name "provenance", :namespace "crank.core", :complexity 1, :coverage nil, :crap nil}
-  {:name "parse-extents", :namespace "crank.kondo", :complexity 1, :coverage nil, :crap nil}
   {:name "-main", :namespace "crank.main", :complexity 1, :coverage nil, :crap nil}
   {:name "config-error", :namespace "crank.main", :complexity 1, :coverage nil, :crap nil}
 ]}

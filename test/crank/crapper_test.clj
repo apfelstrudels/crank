@@ -10,18 +10,19 @@
   (testing "the parser consumes a real crapper 9f1bead .metrics/crap.edn verbatim"
     (let [entries (crapper/parse-crapper-edn
                    (slurp "test/fixtures/crapper-crank-src/crap.edn"))]
-      (is (= 32 (count entries)))
+      (is (= 36 (count entries)))
       (is (= [{:name "validate-config" :ns "crank.main" :cc 16}
+              {:name "join" :ns "crank.core" :cc 15}
               {:name "match-extent" :ns "crank.core" :cc 15}
               {:name "parse-args" :ns "crank.main" :cc 15}
-              {:name "join" :ns "crank.core" :cc 14}
               {:name "run" :ns "crank.main" :cc 9}
               {:name "parse-lcov" :ns "crank.cov.lcov" :cc 8}
+              {:name "attribute" :ns "crank.core" :cc 7}
               {:name "expand" :ns "crank.cc.sift" :cc 6}
-              {:name "attribute" :ns "crank.core" :cc 5}
-              {:name "parse-crapper-edn" :ns "crank.cc.crapper" :cc 4}
+              {:name "fidelity-report" :ns "crank.core" :cc 6}
+              {:name "parse-crapper-edn" :ns "crank.cc.crapper" :cc 5}
+              {:name "var-langs" :ns "crank.kondo" :cc 5}
               {:name "band" :ns "crank.core" :cc 4}
-              {:name "fidelity-report" :ns "crank.core" :cc 4}
               {:name "table" :ns "crank.core" :cc 4}
               {:name "exit-code" :ns "crank.main" :cc 4}
               {:name "root-relative" :ns "crank.cc.sift" :cc 3}
@@ -30,17 +31,20 @@
               {:name "root-relative" :ns "crank.kondo" :cc 3}
               {:name "file-units" :ns "crank.cc.sift" :cc 2}
               {:name "units->cc-entries" :ns "crank.cc.sift" :cc 2}
+              {:name "lane-mismatched?" :ns "crank.core" :cc 2}
               {:name "coverage-files" :ns "crank.cov.v8" :cc 2}
               {:name "remap-script" :ns "crank.cov.v8" :cc 2}
+              {:name "parse-extents" :ns "crank.kondo" :cc 2}
               {:name "version" :ns "crank.kondo" :cc 2}
               {:name "load-config" :ns "crank.main" :cc 2}
               {:name "clj-file?" :ns "crank.cc.sift" :cc 1}
+              {:name "cljc-file?" :ns "crank.cc.sift" :cc 1}
+              {:name "cljs-feature-copy" :ns "crank.cc.sift" :cc 1}
               {:name "crap" :ns "crank.core" :cc 1}
               {:name "edn-report" :ns "crank.core" :cc 1}
               {:name "fmt" :ns "crank.core" :cc 1}
               {:name "pct" :ns "crank.core" :cc 1}
               {:name "provenance" :ns "crank.core" :cc 1}
-              {:name "parse-extents" :ns "crank.kondo" :cc 1}
               {:name "-main" :ns "crank.main" :cc 1}
               {:name "config-error" :ns "crank.main" :cc 1}]
              entries)))))
