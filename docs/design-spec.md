@@ -163,7 +163,8 @@ Implementations:
   schairs CI runs the same counter today. Known gap: crapper's EDN has **no line numbers**,
   so the join to extents is by `(ns, name)` against kondo's `(name, ns, row, end-row)` -
   the Plan-B join the feasibility report §4.3-Plan-B already specifies. Ambiguous matches
-  (same name twice in one ns) are a loud error, never a guess.
+  (same name defined twice in one ns) are a loud error, never a guess; a `(declare x)`
+  forward declaration is not a definition and never makes a match ambiguous.
 - **`:sift` (alternative).** sift v0.2.0 pinned at sha `8125fe8`, consumed as a Clojure git
   dep and invoked in-process (it is a Clojure library; CLI form `sift lint --no-kondo --edn`
   validated in feasibility §2.6). Emits `:line`, so its extent join is the prototype's exact
